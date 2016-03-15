@@ -50,14 +50,14 @@ explicitly separated from the protocol.
 
 A node MUST handle continuing a previous channel on a new encrypted
 transport.  A node MUST set the `acknowledge` field in the header of
-the `authenticate` packet to the the number of previously-processed
-non-authenticate packets.  A node MUST NOT send out a packet with an
+the `authenticate` message to the the number of previously-processed
+non-authenticate messages.  A node MUST NOT send out a message with an
 `acknowledge` field smaller than a previous `acknowledge` field.
 
-A node MUST retransmit packets which may not have been included in the
+A node MUST retransmit messages which may not have been included in the
 `authenticate` header's `acknowledge` field.
 
-A node retransmitting previous packets MUST ensure they are bitwise
+A node retransmitting previous messages MUST ensure they are bitwise
 identical after decryption.
 
 # Channel Establishment #
@@ -489,7 +489,7 @@ negotiation begins.
 
 ## Closing initiation: close_clearing ##
 
-Either node (or both) can send a `close_clearing` packet to initiate closing.
+Either node (or both) can send a `close_clearing` message to initiate closing.
 
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
 must not send more than one `close_clearing`.  A node MUST NOT send an

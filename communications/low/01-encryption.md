@@ -19,7 +19,7 @@ bitcoin-style public key[1].
 
 ## Initial Handshake ##
 
-The first packet sent by a node is of form:
+The first message sent by a node is of form:
 
 1. `length`: 4 byte little-endian
 2. `sessionpubkey`: 33 byte DER-encoded compressed public EC-key
@@ -42,7 +42,7 @@ Once a node has received the initial handshake, it can derive the
 shared secret using the received `sessionpubkey` point and its own
 `sessionsecretkey` scalar using EC Diffie-Hellman.
 
-Now both nodes have obtained the shared secret, all packets are
+Now both nodes have obtained the shared secret, all messages are
 encrypted using keys derived from the shared secret.  Keys are derived
 as follows:
 
@@ -52,33 +52,33 @@ as follows:
 ie. each node combines the secret with its node id to produce the key
 to encrypt data it sends.
 
-## Encryption of Packets ##
+## Encryption of Messages ##
 
 The protocol uses Authenticated Encryption with Additional Data using
 ChaCha20-Poly1305[2].
 
-Each packet contains a header and a body.  The header consists of:
+Each message contains a header and a body.  The header consists of:
 
 * `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
-* `count`: an 8-byte little-endian field indicating the number of non-authenticate packets sent so far.
-* `acknowledge`: an 8-byte little-endian field indicating the number of non-authenticate packets received and processed so far.
+* `count`: an 8-byte little-endian field indicating the number of non-authenticate messages sent so far.
+* `acknowledge`: an 8-byte little-endian field indicating the number of non-authenticate messages received and processed so far.
 
-The 20-byte header for each packet is encrypted separately (resulting
+The 20-byte header for each message is encrypted separately (resulting
 in a 36 byte header, when the authentication tag is appended), to
 offer additional protection from traffic analysis.
 
 The body also has a 16-byte authentication tag appended.
 
 Nonces are 64-bit little-endian numbers, which MUST begin at 0 and
-MUST be incremented after each encryption (ie. twice per packet), such
-that headers are encrypted with even nonces and the packet bodies
+MUST be incremented after each encryption (ie. twice per message), such
+that headers are encrypted with even nonces and the message bodies
 encrypted with odd nonces.
 
-## Authentication Packet ##
+## Authentication Message ##
 
 Once the shared secret has been exchanged, the identity of the peer
-has still not been authenticated.  The first packet sent MUST be an
-authentication packet:
+has still not been authenticated.  The first message sent MUST be an
+`authenticate` message:
 
 	message authenticate {
 	  // Which node this is.
