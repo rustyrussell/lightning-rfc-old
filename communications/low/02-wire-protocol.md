@@ -49,10 +49,16 @@ re-established from time to time, the design of the transport has been
 explicitly separated from the protocol.
 
 A node MUST handle continuing a previous channel on a new encrypted
-transport.  A node MUST set the packet counter of the authenticate
-message to one less than the messages it intends to retransmit, MUST
-retransmit packets which may not have been received by the other node,
-and MUST ensure they are bitwise identical.
+transport.  A node MUST set the `acknowledge` field in the header of
+the `authenticate` packet to the the number of previously-processed
+non-authenticate packets.  A node MUST NOT send out a packet with an
+`acknowledge` field smaller than a previous `acknowledge` field.
+
+A node MUST retransmit packets which may not have been included in the
+`authenticate` header's `acknowledge` field.
+
+A node retransmitting previous packets MUST ensure they are bitwise
+identical after decryption.
 
 # Channel Establishment #
 
@@ -398,18 +404,17 @@ When a node wants to update the commitment transaction to include the
 staged changes, it generates the other node's commitment transaction with those changes, signs it and sends an `update_commit` message:
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
-* `your_changes`: the total number of changes (`update_add_htlc`, `update_fail_htlc`, `update_fulfill_htlc`, `update_fee` and `close_begin`) received so far.
 * `fee_rate`: set the fee for the receiving node's commitment transaction.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee.
 
-The sending node MUST set `fee_rate` within the (inclusive) range of the last `update_fee` message acknowledged by `your_changes`.  The sending node MUST NOT set `fee_rate` such that it cannot afford its share of the fee.  See "Fee Calculation" for how this alters the commitment transaction.  The suggested `fee_rate` is twice the fee rate estimated for entry into the next block.
+The sending node MUST set `fee_rate` within the (inclusive) range of the last `update_fee` message acknowledged by the header's `acknowledge` field.  The sending node MUST NOT set `fee_rate` such that it cannot afford its share of the fee.  See "Fee Calculation" for how this alters the commitment transaction.  The suggested `fee_rate` is twice the fee rate estimated for entry into the next block.
 
 The receiver MUST check `fee` and fail the connection if it is not within this range, or the sending node cannot afford it.
 
 The receiving node creates its own new commitment transaction
 with the new fee, all the other node's staged changes and its own
-staged changes up to and including `your_changes`.  The receiver MUST
+staged changes up to and including the message acknowledged by the `acknowledge` header.  The receiver MUST
 check the signature is valid for that transaction.
 
 The receiver then responds with an `update_revocation` message which
@@ -433,8 +438,6 @@ to a failed connection), to reduce this risk.
     message update_commit {
       // Signature for your new commitment tx.
       required signature sig = 1;
-      // Index of your changes included in new commitment tx.
-      required uint32 your_changes = 2;
       // Fee for the new commitment tx.
 	  required uint32 fee_rate = 3;
     }
@@ -490,8 +493,8 @@ Either node (or both) can send a `close_clearing` packet to initiate closing.
 
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
 must not send more than one `close_clearing`.  A node MUST NOT send an
-`update_add_htlc` after sending an `update_commit` with a
-`your_changes` field acknowledging the other node's `close_clearing`.
+`update_add_htlc` after sending an `update_commit` with an
+`acknowledge` header field acknowledging the other node's `close_clearing`.
 
 A node MUST respond with `update_fail_htlc` to any HTLC received after it sent `close_clearing`.
 

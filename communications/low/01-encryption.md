@@ -57,16 +57,14 @@ to encrypt data it sends.
 The protocol uses Authenticated Encryption with Additional Data using
 ChaCha20-Poly1305[2].
 
-Each packet contains a header and a body.  The header consists of a
-4-byte length indicating the size of the unencrypted body, and an
-8-byte packet counter.  The 4-byte length and 8-byte counter MUST be
-encoded in little-endian.  The 8-byte counter MUST begin at 0 and be
-incremented before each transmission after the initial authentication
-packet; it MAY be non-zero for the authentication packet for
-re-establishing an existing session.
+Each packet contains a header and a body.  The header consists of:
 
-The 12-byte header for each packet is encrypted separately (resulting
-in a 28 byte header, when the authentication tag is appended), to
+* `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
+* `count`: an 8-byte little-endian field indicating the number of non-authenticate packets sent so far.
+* `acknowledge`: an 8-byte little-endian field indicating the number of non-authenticate packets received and processed so far.
+
+The 20-byte header for each packet is encrypted separately (resulting
+in a 36 byte header, when the authentication tag is appended), to
 offer additional protection from traffic analysis.
 
 The body also has a 16-byte authentication tag appended.
@@ -96,6 +94,12 @@ The receiving node MUST check that:
 32-byte big endian R value, followed by a 32-byte big endian S value.
 3. `session_sig` is the signature of the SHA256 of SHA256 of the receivers
    `node_id`, using the secret key corresponding to the sender's `node_id`.
+
+The `count` field in the header MUST BE set to zero, and the
+`acknowledge` field MUST BE set to the number of non-authenticate
+messages received and processed.  The receiver MUST NOT examine these
+values until after the authentication fields have been successfully
+validated.
 
 Additional fields MAY be included, and MUST BE ignored if not
 understood (to allow for future extensions).
