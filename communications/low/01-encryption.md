@@ -59,12 +59,11 @@ ChaCha20-Poly1305[2].
 
 Each message contains a header and a body.  The header consists of the following fields in order:
 
-* `count`: an 8-byte little-endian field indicating the number of non-authenticate messages sent so far.
 * `acknowledge`: an 8-byte little-endian field indicating the number of non-`authenticate` messages received and processed so far.
 * `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
 
-The 20-byte header for each message is encrypted separately (resulting
-in a 36 byte header when the authentication tag is appended), to
+The 12-byte header for each message is encrypted separately (resulting
+in a 28 byte header when the authentication tag is appended), to
 offer additional protection from traffic analysis.
 
 The body also has a 16-byte authentication tag appended.
@@ -95,11 +94,10 @@ The receiving node MUST check that:
 3. `session_sig` is the signature of the SHA256 of SHA256 of the receivers
    `node_id`, using the secret key corresponding to the sender's `node_id`.
 
-The `count` field in the header MUST BE set to zero, and the
+The receiver MUST NOT examine the `acknowledge` value until after the
+authentication fields have been successfully validated.  The
 `acknowledge` field MUST BE set to the number of non-authenticate
-messages received and processed.  The receiver MUST NOT examine these
-values until after the authentication fields have been successfully
-validated.
+messages received and processed.
 
 Additional fields MAY be included, and MUST BE ignored if not
 understood (to allow for future extensions).
