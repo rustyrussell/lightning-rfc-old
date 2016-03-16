@@ -57,14 +57,14 @@ to encrypt data it sends.
 The protocol uses Authenticated Encryption with Additional Data using
 ChaCha20-Poly1305[2].
 
-Each message contains a header and a body.  The header consists of:
+Each message contains a header and a body.  The header consists of the following fields in order:
 
-* `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
 * `count`: an 8-byte little-endian field indicating the number of non-authenticate messages sent so far.
-* `acknowledge`: an 8-byte little-endian field indicating the number of non-authenticate messages received and processed so far.
+* `acknowledge`: an 8-byte little-endian field indicating the number of non-`authenticate` messages received and processed so far.
+* `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
 
 The 20-byte header for each message is encrypted separately (resulting
-in a 36 byte header, when the authentication tag is appended), to
+in a 36 byte header when the authentication tag is appended), to
 offer additional protection from traffic analysis.
 
 The body also has a 16-byte authentication tag appended.
