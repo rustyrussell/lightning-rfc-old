@@ -47,3 +47,23 @@ LEADERs are identified by a self-assigned 8 character nickname. LEADERs
 that are over a year old and have not been implemented and promoted to
 a BOLT, will generally be deleted.
 
+# Lightning Implementations
+
+There are no known functional implementations of the Lightning Network
+yet. There are a number of partial implementations and prototypes,
+however:
+
+Nickname     | Contact(s)                  | Companies   | Status    | Notes
+-------------|-----------------------------|-------------|-----------|-------
+[Amiko-Pay]  | CJP                         |             | Prototype | Python, GPLv3+
+[Eclair]     | Pierre-Marie PADIOU         | ACINQ       | Prototype | SCALA, Apache 2.0
+[lightningd] | Rusty Russell               | Blockstream | Prototype | C, MIT
+[lnd]        | Thaddeus Dryja, Joseph Poon |             | Prototype | Go, MIT
+[Thunder]    | matsjj                      |             | Prototype | Java, AGPLv3
+
+[Amiko-Pay]: https://github.com/cornwarecjp/amiko-pay
+[Eclair]: https://github.com/ACINQ/eclair
+[lightningd]: https://github.com/ElementsProject/lightning
+[lnd]: https://github.com/LightningNetwork/lnd
+[Thunder]: https://github.com/matsjj/thundernetwork
+
