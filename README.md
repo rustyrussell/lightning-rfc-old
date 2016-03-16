@@ -32,9 +32,11 @@ that support them or are working on supporting them.
 
 # Lightning Early Access Developments, Evaluation and Review (LEADERs)
 
-LEADER | Year | Title                               | Author
-------:|------|-------------------------------------|-----------
-(none) | 2016 | (none)                              | (none)
+LEADER     | Year | Title                                     | Author
+-----------|------|-------------------------------------------|-----------
+[shachain] | 2016 | Efficient Chains Of Unpredictable Numbers | Rusty Russell
+
+[shachain]: leaders/shachain.txt
 
 LEADERs are ideas being considered by implementors that might or might
 not ever see actual use.  (In the weather phenomenon, cloud to ground
