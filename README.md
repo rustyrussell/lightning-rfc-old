@@ -30,22 +30,21 @@ the Draft or Proposal stages.
 BOLTs should list up to five of the Lightning Network implementations
 that support them or are working on supporting them.
 
-# Lightning Early Access Developments, Evaluation and Review (LEADERs)
+# Early Drafts
 
-LEADER     | Year | Title                                     | Author
+Draft ID   | Year | Title                                     | Author
 -----------|------|-------------------------------------------|-----------
 [shachain] | 2016 | Efficient Chains Of Unpredictable Numbers | Rusty Russell
 
-[shachain]: leaders/shachain.txt
+[shachain]: early-drafts/shachain.txt
 
-LEADERs are ideas being considered by implementors that might or might
-not ever see actual use.  (In the weather phenomenon, cloud to ground
-lightning bolts are usually initiated by a stepped "leader" moving down
-from the cloud to ground)
+Early drafts of proposed BOLTs can be added to the repo as well. These
+are ideas being considered by implementors that might or might not ever
+see actual use.
 
-LEADERs are identified by a self-assigned 8 character nickname. LEADERs
-that are over a year old and have not been implemented and promoted to
-a BOLT, will generally be deleted.
+Early drafts are identified by a self-assigned 8 character nickname. If
+they have not been implemented and promoted to a BOLT within a year,
+they will generally be deleted.
 
 # Lightning Implementations
 
