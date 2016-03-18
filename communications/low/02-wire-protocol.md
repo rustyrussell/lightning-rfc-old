@@ -351,7 +351,7 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
     // Complete your HTLC: I have the R value, pay me!
     message update_fulfill_htlc {
       // Which HTLC (index into current HTLCs in the order offered)
-      required int32 index = 1;
+      required uint32 index = 1;
       // HTLC R value.
       required sha256_hash r = 2;
     }
