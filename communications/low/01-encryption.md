@@ -40,7 +40,8 @@ Additional fields MAY be added, and MUST be included in the `length` field.  The
 
 Once a node has received the initial handshake, it can derive the
 shared secret using the received `sessionpubkey` point and its own
-`sessionsecretkey` scalar using EC Diffie-Hellman.
+`sessionsecretkey` scalar using EC Diffie-Hellman, and calculating the
+SHA256 of the shared point, encoded in compressed form.
 
 Now both nodes have obtained the shared secret, all messages are
 encrypted using keys derived from the shared secret.  Keys are derived
