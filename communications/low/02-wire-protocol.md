@@ -83,7 +83,7 @@ The negotiation fields which place requirements on the receiver are:
 
 * `delay`: the `OP_CHECKSEQUENCEVERIFY` value the other node should use to delay payments to itself.  The sender SHOULD set this to a value sufficient to ensure it can irreversibly spend a commitment transaction output in case of misbehavior by the receiver.  This is effectively a demand on how long the receiver could have their funds withheld, thus the receiver MUST reject the delay if it considers it unreasonably large.
 * `min_depth`: the minimum block depth before the anchor transaction is considered irreversible and Normal Operation can begin.  The receiver MAY reject the delay if it considers it unreasonably large; the sender which is not creating the anchor SHOULD set this to a value sufficient to ensure the anchor cannot be unspent.
-* `commitment_fee_rate`: the fee-per-kilobyte to use on commitment transactions, in satoshi.  The receiver MUST fail the connection if considers this unnecessarily large or too small for timely processing.  The sender SHOULD set this to at least the rate it estimates would cause the transaction to be immediately included in a block.
+* `initial_fee_rate`: the fee-per-kilobyte to use on commitment transactions, in satoshi.  The receiver MUST fail the connection if considers this unnecessarily large or too small for timely processing.  The sender SHOULD set this to at least the rate it estimates would cause the transaction to be immediately included in a block.
 
 ### open_channel message format ###
 
@@ -112,7 +112,7 @@ The negotiation fields which place requirements on the receiver are:
       optional uint32 min_depth = 6 [ default = 0 ];
     
       // How much fee would I like on commitment tx?
-      required uint32 commitment_fee_rate = 7;
+      required uint32 initial_fee_rate = 7;
     }
 
 ## Describing the anchor transaction: open_anchor ##
@@ -298,9 +298,10 @@ in millisatoshi, though on-chain enforcement is only possible for
 whole satoshi amounts: in commitment transactions these are rounded
 down as specified in [3].
 
-A node MUST NOT offer `amount_msat` it cannot pay for in both commitment
-transactions (see "Fee Calculation" ), a node SHOULD fail the
-connection if this occurs.  `amount_msat` MUST BE greater than 0.
+A node MUST NOT offer `amount_msat` it cannot pay for in both
+commitment transactions at the current `fee_rate` (see "Fee
+Calculation" ).  A node SHOULD fail the connection if this occurs.
+`amount_msat` MUST BE greater than 0.
 
 A node MUST NOT add a HTLC if it would result in it offering more than
 1500 HTLCs in either commitment transaction.  At 32 bytes per HTLC
@@ -367,9 +368,8 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
 ## Updating Fees: update_fee ##
 
-An `update_fee` message is used to specify a range of acceptable fees
-for the next commitment transaction; it constrains the `fee` field in
-the receiver's next `update_commit` message.
+An `update_fee` message is used for a node to specify the fee for its
+next commitment transaction.
 
 A node SHOULD track bitcoin fees independently, and SHOULD send an
 `update_fee` message whenever they change significantly.  It MAY
@@ -379,23 +379,18 @@ A node MUST update bitcoin fees if it estimates that the current
 commitment transaction will not be processed in a timely manner (see
 "Risks With HTLC Timeouts").
 
-A node MAY fail the connection if the `update_fee` range is not
-acceptable.
+The receiving node MAY fail the connection if the `update_fee` is too
+high.
 
 As the commitment transaction is only used in failure cases, it is
-suggested that the minimum fee be the estimated rate required for a
-transaction to enter the next 6 blocks, and the maximum fee to be at
-least five times the fee rate estimated for entry into the next block.
-
-Fields are as follows:
-* `min_rate`: minimum satoshis per 1000 bytes.
-* `max_rate`: maximum satoshis per 1000 bytes (inclusive).
+suggested that `fee_rate` be twice the amount estimated to allow entry
+into the next block, and that nodes accept a `fee_rate` up to ten
+times that same estimate.
 
 ### update_fee message format ###
 	
     message update_fee {
-      required uint64 min_rate = 1;
-      required uint64 max_rate = 2;
+      required uint32 fee_rate = 1;
     }
 
 ## Signing HTLCs So Far: update_commit and update_revocation ##
@@ -404,16 +399,11 @@ When a node wants to update the commitment transaction to include the
 staged changes, it generates the other node's commitment transaction with those changes, signs it and sends an `update_commit` message:
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
-* `fee_rate`: set the fee for the receiving node's commitment transaction.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee.
 
-The sending node MUST set `fee_rate` within the (inclusive) range of the last `update_fee` message acknowledged by the header's `acknowledge` field.  The sending node MUST NOT set `fee_rate` such that it cannot afford its share of the fee.  See "Fee Calculation" for how this alters the commitment transaction.  The suggested `fee_rate` is twice the fee rate estimated for entry into the next block.
-
-The receiver MUST check `fee` and fail the connection if it is not within this range, or the sending node cannot afford it.
-
 The receiving node creates its own new commitment transaction
-with the new fee, all the other node's staged changes and its own
+with the last `fee_rate` it has acknowledged, all the other node's staged changes and its own
 staged changes up to and including the message acknowledged by the `acknowledge` header.  The receiver MUST
 check the signature is valid for that transaction.
 
@@ -438,8 +428,6 @@ to a failed connection), to reduce this risk.
     message update_commit {
       // Signature for your new commitment tx.
       required signature sig = 1;
-      // Fee for the new commitment tx.
-	  required uint32 fee_rate = 3;
     }
 
 ### update_revocation message format ###
@@ -454,27 +442,81 @@ to a failed connection), to reduce this risk.
 
 ## Fee Calculation ##
 
-The fee for a commitment transaction is calculated by the multiplying
-the number of bytes in the commitment transaction by the fee rate,
-dividing by 1000 and truncating (rounding down) the result to an even
-number of satoshis.
+Each node maintains a separate current fee rate for its own commitment
+transaction; if it needs to use the commitment transaction the fee
+will ensure timely inclusion in a block.
 
-eg.  A 300-byte transaction with a `fee_rate` of 1111 has a fee of:
+For simplicity and fairness, the nodes split the payment of the
+commitment transaction fee evenly where possible; for robustness, one
+node will make up the difference if necessary.
 
-	300 * 1111 / 1000 = 333.3333 = 332 satoshis
+As the core commitment transaction size can vary depending on the
+number of outputs and the DER-encoding of signatures, we use the
+following worst case values:
 
-The fee is extracted equally from both parties, if possible.  Since
-neither party can offer an HTLC they can't afford, this can only
-fail in two cases:
+1. The input script is 221 bytes long:
+    * redeemscript is 71 bytes ("2" `key1` `key2` "2" OP_CHECKMULTISIG)
+    * signatures are 73 bytes each (the worst case)
+	* extra 0 push op for the multisig is 1 byte
+    * Overhead for pushing two signatures and the redeemscript is 3 bytes
 
-1. The initial channel where the non-anchor node hasn't received enough
-   funds to allow it to pay its share of the fee, or
-2. Fee increases where one side doesn't have enough funds to pay their
-   share of the increased fee.
+2. The input is 41 bytes long:
+    * transaction id is 32 bytes long.
+    * input index is 4 bytes long.
+	* script length is 1 byte long.
+	* sequence number is 4 bytes long
 
-In both these cases, one side pays all it can, and the remainder is
-paid by the other side.  Note that the underpaying side will not be
-able to offer any new HTLCs until it has met its fee obligations.
+3. The core of the transaction is 12 bytes long:
+    * 4 byte version
+    * 1 byte input count
+    * 3 byte output count (worst case)
+    * 4 byte lock time
+
+4. Each output is a p2sh, which is 32 bytes long:
+    * 8 byte amount
+    * 1 byte script length
+    * 23 byte p2sh script
+
+Summing the first three gives 274 bytes, and it is also assumed that
+there is an output for each node's `final_key`, even if the amount
+would be dust (and thus not actually be constructed in the commitment
+transaction, as detailed in [3]).  This results in an assumed fixed
+overhead of 338 bytes.
+
+A node MUST use the formula 338 + 32 bytes for every non-dust HTLC as
+the bytecount for calculating commitment transaction fees.  Note that
+the fee requirement is unchanged, even if the elimination of dust HTLC
+outputs has caused a non-zero fee already.
+
+The fee for a commitment transaction MUST be calculated by the
+multiplying this bytescount by the fee rate, dividing by 1000 and
+truncating (rounding down) the result to an even number of satoshis.
+
+eg.  A 402-byte transaction with a `fee_rate` of 1112 has a fee of:
+
+	402 * 1112 / 1000 = 447.024 = 446 satoshis
+
+Note that one or both nodes may be unable to pay its share of fees
+even with best of intentions, when a fee increase via `update_fee` is
+acknowledged after one or more `update_add_htlc` messages.  At worst
+case, the fee rate will be equal to the previous commitment
+transaction.  In any case, nodes which cannot pay their fees will be
+unable to add any additional HTLCs until fees change again or HTLCs
+are fulfilled or failed.
+
+Fees are divided as following:
+
+1. If each nodes can afford half the fee from their to-`final_key`
+   output, reduce the two to-`final_key` outputs accordingly.
+
+2. Otherwise, reduce the to-`final_key` output of one node which
+   cannot afford the fee to zero (resulting in that entire output
+   paying fees).  If the remaining to-`final_key` output is greater
+   than the fee remaining, reduce it accordingly, otherwise reduce
+   it to zero to pay as much fee as possible.
+
+3. If either to-`final_key` output is dust, eliminate it from the
+   transaction.
 
 # Channel Close #
 
