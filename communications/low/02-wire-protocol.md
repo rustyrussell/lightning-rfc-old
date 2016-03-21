@@ -520,7 +520,8 @@ commitment transaction:
 * `sig`: the signature for the close transaction with that fee.
 
 The sender MUST set `close_fee` lower than or equal to the fee of the
-final commitment transaction.
+final commitment transaction, and MUST set `close_fee` to an even
+number of satoshis.
 
 The sender SHOULD set the initial `close_fee` according to its
 estimate of cost of inclusion in a block.  Note that there is no
@@ -534,8 +535,8 @@ MUST fail the connection if it is not.
 If the receiver agrees with the fee, it SHOULD reply with a
 `close_signature` with the same `close_fee` value and sign and
 broadcast that closing transaction, otherwise it SHOULD propose a
-value between the received `close_fee` and its previously sent
-`close_fee`.
+value strictly between the received `close_fee` and its
+previously-sent `close_fee`.
 
 Once a node has sent or received a `close_signature` with matching
 `close_fee` it SHOULD close the connection.
