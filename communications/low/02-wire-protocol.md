@@ -128,6 +128,11 @@ The fields of this message are:
 
 The receiver MAY fail the connection if `amount` is too low; the sender MUST offer an `amount` sufficient to cover the fees of both initial commitment transactions.  The receiver MUST fail the connection if the `commit_sig` does not sign its initial commit transaction.
 
+The sender MUST NOT offer an `amount` in excess of 4294967 satoshis;
+the receiver MAY fail the connection if `amount` is greater than this
+amount.  This ensures that any possible HTLC amounts (in millisatoshi)
+can be represented by 32 bits.
+
 ### open_anchor message format ###
 
     // Whoever is supplying anchor sends this.
