@@ -428,6 +428,8 @@ to a failed connection), to reduce this risk.
     message update_commit {
       // Signature for your new commitment tx.
       required signature sig = 1;
+      // Which HTLC (index into current HTLCs in the order offered)
+      required uint32 index = 2;
     }
 
 ### update_revocation message format ###
