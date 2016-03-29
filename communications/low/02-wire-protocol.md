@@ -496,9 +496,9 @@ the bytecount for calculating commitment transaction fees.  Note that
 the fee requirement is unchanged, even if the elimination of dust HTLC
 outputs has caused a non-zero fee already.
 
-The fee for a commitment transaction MUST be calculated by the
-multiplying this bytescount by the fee rate, dividing by 1000 and
-truncating (rounding down) the result to an even number of satoshis.
+The fee for a transaction MUST be calculated by the multiplying this
+bytecount by the fee rate, dividing by 1000 and truncating (rounding
+down) the result to an even number of satoshis.
 
 eg.  A 402-byte transaction with a `fee_rate` of 1112 has a fee of:
 
@@ -579,8 +579,12 @@ security issue if the closing transaction is delayed, and it will be
 broadcast very soon, so there is usually no reason to pay a premium
 for rapid processing.
 
-The receiver MUST check `sig` is valid for the close transaction, and
-MUST fail the connection if it is not.
+The sender MUST set signature to the bitcoin signature of the close
+transaction with `close_fee` divided as described in "Fee
+Calculation".
+
+The receiver MUST check `sig` is valid for the close transaction with
+the given `close_fee`, and MUST fail the connection if it is not.
 
 If the receiver agrees with the fee, it SHOULD reply with a
 `close_signature` with the same `close_fee` value and sign and
