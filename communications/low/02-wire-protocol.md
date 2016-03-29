@@ -329,7 +329,7 @@ future.  See also "Risks With HTLC Timeouts".
       // Time at which HTLC expires (absolute)
       required locktime expiry = 4;
 	  // Onion-wrapped routing information.
-	  required routing = 5;
+	  required routing route = 5;
     }
 
 ## Removing an HTLC: update_fulfill_htlc and update_fail_htlc ##
