@@ -236,23 +236,36 @@ preimage for its old commitment transaction:
 There are several alternate timing scenarios: if B decided to commit
 in parallel to A, before receiving A's update:
 
-           NODE A                NODE B
-
-                  <---------- ADD HTLC Y
-         ADD HTLC X ------>
-                  <---------- SIG 0
-         SIG 1 ----------->
-		                       Committed: [X Y]
-	                           Staged:    []
+           NODE A                            NODE B
+                                              Committed: []
+                                              Staged:    [Y]
+                           <----------- ADD HTLC Y
+    Committed: []                                  
+    Staged:    [Y]
+    
+    
+    Committed: []                             Committed: [Y]
+    Staged:    [Y X]                          Staged:    []
+                ADD HTLC X -------  --- SIG 0
+                                  \/
+    Committed: [Y X]              /\
+    Staged:    []                /  -->
+                     SIG 1 ---  /             Committed: [Y]
+                              \/              Staged:    [X]               
+                              /\   
+                           <--  ------> 
     Committed: [Y]
     Staged:    [X]
-         REVOCATION --------->
+    
+                REVOCATION ----------->
 
-                  <---------- REVOCATION
-                  <---------- SIG 1
+                           <----------- REVOCATION
+                                              Committed: [Y X]     
+                                              Staged:    []
+                           <----------- SIG 1
     Committed: [Y X]
     Staged:    []
-         REVOCATION --------->
+                REVOCATION ----------->
 
 Here, A received the signature and commits B's update but not its own
 (because B didn't acknowledge it); later B responds with a signature
