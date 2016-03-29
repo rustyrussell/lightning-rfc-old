@@ -319,9 +319,16 @@ transaction relay.
 A node SHOULD NOT offer a HTLC with a timeout less than `delay` in the
 future.  See also "Risks With HTLC Timeouts".
 
+A node MUST set `id` to a unique identifier for this HTLC amongst all
+past or future `update_add_htlc` messages.  A node MAY do this simply
+by incrementing a counter and assuming there will never be 2^64
+messages.
+
 ### update_add_htlc message format ###
 
-    message update_add_htlc {
+	message update_add_htlc {
+	  // Unique identifier for this HTLC.
+	  required uint64 id;
       // Amount for htlc (millisatoshi)
       required uint32 amount_msat = 2;
       // Hash for HTLC R value.
@@ -342,10 +349,8 @@ A node SHOULD remove an HTLC as soon as it can; in particular, a node
 SHOULD fail an HTLC which has timed out, otherwise it risks connection
 failure (see "Risks With HTLC Timeouts").
 
-A node MUST check that the `index` is less than the number of HTLCs it
-has offered in the current commitment transaction, and MUST fail the
-connection if it does not.  The `index` refers to the current HTLCs in
-the order they were offered.
+A node MUST check that `id` corresponds to an HTLC in its current
+commitment transaction, and MUST fail the connection if it does not.
 
 A node MUST check that the `r` value in `update_fulfill_htlc` hashes
 to the corresponding HTLC, and MUST fail the connection if it does not.
@@ -359,8 +364,8 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
     // Complete your HTLC: I have the R value, pay me!
     message update_fulfill_htlc {
-      // Which HTLC (index into current HTLCs in the order offered)
-      required uint32 index = 1;
+      // Which HTLC
+      required uint64 id = 1;
       // HTLC R value.
       required sha256_hash r = 2;
     }
@@ -368,8 +373,8 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 ### update_fail_htlc message format ###
 	
     message update_fail_htlc {
-      // Which HTLC (index into current HTLCs in the order offered)
-      required int32 index = 1;
+      // Which HTLC
+      required uint64 id = 1;
 	  // Reason for failure (for relay to initial node)
 	  required fail_reason reason = 2;
     }
