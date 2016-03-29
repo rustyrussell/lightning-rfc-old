@@ -85,6 +85,9 @@ The negotiation fields which place requirements on the receiver are:
 * `min_depth`: the minimum block depth before the anchor transaction is considered irreversible and Normal Operation can begin.  The receiver MAY reject the delay if it considers it unreasonably large; the sender which is not creating the anchor SHOULD set this to a value sufficient to ensure the anchor cannot be unspent.
 * `initial_fee_rate`: the fee-per-kilobyte to use on commitment transactions, in satoshi.  The receiver MUST fail the connection if considers this unnecessarily large or too small for timely processing.  The sender SHOULD set this to at least the rate it estimates would cause the transaction to be immediately included in a block.
 
+Each `bitcoin_pubkey` field MUST be a valid compressed 33-byte
+DER-encoded bitcoin public key.
+
 ### open_channel message format ###
 
     // Set channel params.
