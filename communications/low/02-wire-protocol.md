@@ -414,7 +414,7 @@ staged changes, it generates the other node's commitment transaction with those 
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
 
-A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee.
+A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
 
 The receiving node creates its own new commitment transaction
 with the last `fee_rate` it has acknowledged, all the other node's staged changes and its own
