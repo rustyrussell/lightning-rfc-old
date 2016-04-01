@@ -85,6 +85,9 @@ The negotiation fields which place requirements on the receiver are:
 * `min_depth`: the minimum block depth before the anchor transaction is considered irreversible and Normal Operation can begin.  The receiver MAY reject the delay if it considers it unreasonably large; the sender which is not creating the anchor SHOULD set this to a value sufficient to ensure the anchor cannot be unspent.
 * `initial_fee_rate`: the fee-per-kilobyte to use on commitment transactions, in satoshi.  The receiver MUST fail the connection if considers this unnecessarily large or too small for timely processing.  The sender SHOULD set this to at least the rate it estimates would cause the transaction to be immediately included in a block.
 
+Each `bitcoin_pubkey` field MUST be a valid compressed 33-byte
+DER-encoded bitcoin public key.
+
 ### open_channel message format ###
 
     // Set channel params.
@@ -127,6 +130,11 @@ The fields of this message are:
 * `commit_sig`: the signature for the receiver's initial commitment transaction.
 
 The receiver MAY fail the connection if `amount` is too low; the sender MUST offer an `amount` sufficient to cover the fees of both initial commitment transactions.  The receiver MUST fail the connection if the `commit_sig` does not sign its initial commit transaction.
+
+The sender MUST NOT offer an `amount` in excess of 4294967 satoshis;
+the receiver MAY fail the connection if `amount` is greater than this
+amount.  This ensures that any possible HTLC amounts (in millisatoshi)
+can be represented by 32 bits.
 
 ### open_anchor message format ###
 
@@ -324,9 +332,17 @@ transaction relay.
 A node SHOULD NOT offer a HTLC with a timeout less than `delay` in the
 future.  See also "Risks With HTLC Timeouts".
 
+A node SHOULD set `id` to a unique identifier for this HTLC amongst
+all past or future `update_add_htlc` messages.  A node MUST NOT set
+`id` equal to another HTLC which is in the current staged commitment
+transaction.  A node MAY do this simply by incrementing a counter and
+assuming there will never be 2^64 messages.
+
 ### update_add_htlc message format ###
 
-    message update_add_htlc {
+	message update_add_htlc {
+	  // Unique identifier for this HTLC.
+	  required uint64 id;
       // Amount for htlc (millisatoshi)
       required uint32 amount_msat = 2;
       // Hash for HTLC R value.
@@ -334,7 +350,7 @@ future.  See also "Risks With HTLC Timeouts".
       // Time at which HTLC expires (absolute)
       required locktime expiry = 4;
 	  // Onion-wrapped routing information.
-	  required routing = 5;
+	  required routing route = 5;
     }
 
 ## Removing an HTLC: update_fulfill_htlc and update_fail_htlc ##
@@ -347,10 +363,8 @@ A node SHOULD remove an HTLC as soon as it can; in particular, a node
 SHOULD fail an HTLC which has timed out, otherwise it risks connection
 failure (see "Risks With HTLC Timeouts").
 
-A node MUST check that the `index` is less than the number of HTLCs it
-has offered in the current commitment transaction, and MUST fail the
-connection if it does not.  The `index` refers to the current HTLCs in
-the order they were offered.
+A node MUST check that `id` corresponds to an HTLC in its current
+commitment transaction, and MUST fail the connection if it does not.
 
 A node MUST check that the `r` value in `update_fulfill_htlc` hashes
 to the corresponding HTLC, and MUST fail the connection if it does not.
@@ -364,8 +378,8 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
     // Complete your HTLC: I have the R value, pay me!
     message update_fulfill_htlc {
-      // Which HTLC (index into current HTLCs in the order offered)
-      required uint32 index = 1;
+      // Which HTLC
+      required uint64 id = 1;
       // HTLC R value.
       required sha256_hash r = 2;
     }
@@ -373,8 +387,8 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 ### update_fail_htlc message format ###
 	
     message update_fail_htlc {
-      // Which HTLC (index into current HTLCs in the order offered)
-      required int32 index = 1;
+      // Which HTLC
+      required uint64 id = 1;
 	  // Reason for failure (for relay to initial node)
 	  required fail_reason reason = 2;
     }
@@ -413,7 +427,7 @@ staged changes, it generates the other node's commitment transaction with those 
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
 
-A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee.
+A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
 
 The receiving node creates its own new commitment transaction
 with the last `fee_rate` it has acknowledged, all the other node's staged changes and its own
@@ -501,9 +515,9 @@ the bytecount for calculating commitment transaction fees.  Note that
 the fee requirement is unchanged, even if the elimination of dust HTLC
 outputs has caused a non-zero fee already.
 
-The fee for a commitment transaction MUST be calculated by the
-multiplying this bytescount by the fee rate, dividing by 1000 and
-truncating (rounding down) the result to an even number of satoshis.
+The fee for a transaction MUST be calculated by the multiplying this
+bytecount by the fee rate, dividing by 1000 and truncating (rounding
+down) the result to an even number of satoshis.
 
 eg.  A 402-byte transaction with a `fee_rate` of 1112 has a fee of:
 
@@ -584,8 +598,12 @@ security issue if the closing transaction is delayed, and it will be
 broadcast very soon, so there is usually no reason to pay a premium
 for rapid processing.
 
-The receiver MUST check `sig` is valid for the close transaction, and
-MUST fail the connection if it is not.
+The sender MUST set signature to the bitcoin signature of the close
+transaction with `close_fee` divided as described in "Fee
+Calculation".
+
+The receiver MUST check `sig` is valid for the close transaction with
+the given `close_fee`, and MUST fail the connection if it is not.
 
 If the receiver agrees with the fee, it SHOULD reply with a
 `close_signature` with the same `close_fee` value and sign and
