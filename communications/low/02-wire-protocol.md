@@ -22,7 +22,36 @@ phases:
 This document describes the protocol used between nodes for each of
 these phases.
 
-# General Protocol #
+# Table of Contents
+* 1. General Protocol
+   * 1.1. pkt message format
+   * 1.2. Persistence and Retransmission
+* 2. Channel Establishment
+   * 2.1. The Initial open_channel message
+   * 2.2. Describing the anchor transaction: open_anchor
+   * 2.3. Accepting the Anchor Transaction: open_commit_sig
+   * 2.4. Waiting for the Anchor: open_complete
+* 3. Normal Operation
+   * 3.1. Risks With HTLC Timeouts
+   * 3.2. Adding an HTLC
+   * 3.3. Removing an HTLC: update_fulfill_htlc and update_fail_htlc
+   * 3.4. Updating Fees: update_fee
+   * 3.5. Signing HTLCs So Far: update_commit and update_revocation
+   * 3.6. Fee Calculation
+* 4. Channel Close
+   * 4.1. Closing initiation: close_clearing
+   * 4.2. Closing negotiation: close_signature
+* 5. Revocation Hashes
+* 6. On The Blockchain
+   * 6.1. Monitoring the Blockchain
+   * 6.2. On-chain HTLCs
+   * 6.3. Failing The Connection
+* 7. Security Considerations
+* 8. References
+* Appendix A. Acknowledgements
+* Appendix B. Feedback
+
+# 1. General Protocol
 
 The wire protocol used is protobufs[1], passed over an encrypted
 channel set up and used as specified in BOLT#1[2].
@@ -33,7 +62,7 @@ as an error and fail the connection (also known as "it's OK to be
 odd").  A node MUST NOT send out an even-numbered field not listed
 here without prior negotiation for its acceptance.
 
-## pkt message format ##
+## 1.1. pkt message format
 
     // This is the union which defines all of them
     message pkt {
@@ -42,7 +71,7 @@ here without prior negotiation for its acceptance.
       }
     }
 
-## Persistence and Retransmission ##
+## 1.2. Persistence and Retransmission
 
 Because communication transports are unreliable and may need to be
 re-established from time to time, the design of the transport has been
@@ -60,13 +89,13 @@ A node MUST retransmit messages which may not have been included in the
 A node retransmitting previous messages MUST ensure they are bitwise
 identical after decryption.
 
-# Channel Establishment #
+# 2. Channel Establishment
 
 Channel establishment begins immediately after authentication, and consists of each node sending an `open_channel` message, followed by one node sending `open_anchor`, the other providing its `open_commit_sig` then both sides waiting for the anchor transaction to enter the blockchain and reach their specified depth, at which point they send `open_complete`.  After both sides have sent `open_complete` the channel is established and can begin normal operation.
 
 If this fails at any stage, or a node decides that the channel terms offered by the other node are not suitable, see "Failing The Connection".
 
-## The Initial open_channel message ##
+## 2.1. The Initial open_channel message
 
 The first message for a new connection after authentication is the
 `open_channel` message.  This contains information about each node, and
@@ -88,7 +117,7 @@ The negotiation fields which place requirements on the receiver are:
 Each `bitcoin_pubkey` field MUST be a valid compressed 33-byte
 DER-encoded bitcoin public key.
 
-### open_channel message format ###
+### 2.1.1. open_channel message format
 
     // Set channel params.
     message open_channel {
@@ -118,7 +147,7 @@ DER-encoded bitcoin public key.
       required uint32 initial_fee_rate = 7;
     }
 
-## Describing the anchor transaction: open_anchor ##
+## 2.2. Describing the anchor transaction: open_anchor
 
 Whichever node offered the anchor (`WILL_CREATE_ANCHOR`) will initially fund the channel.  This node will create a transaction with an output redeemable by the `commit_key`s from both nodes (see [3]), which it MUST NOT broadcast.  It then sends an `open_anchor` message which allows the recipient to calculate the signature for the initial commitment transaction.
 
@@ -136,7 +165,7 @@ the receiver MAY fail the connection if `amount` is greater than this
 amount.  This ensures that any possible HTLC amounts (in millisatoshi)
 can be represented by 32 bits.
 
-### open_anchor message format ###
+### 2.2.1. open_anchor message format
 
     // Whoever is supplying anchor sends this.
     message open_anchor {
@@ -151,31 +180,31 @@ can be represented by 32 bits.
       required signature commit_sig = 4;
     }
 
-## Accepting the Anchor Transaction: open_commit_sig ##
+## 2.3. Accepting the Anchor Transaction: open_commit_sig
 
 Upon accepting the `open_anchor` message, the node creates a signature for the anchor creator's initial commitment transaction, and sends it in an `open_commit_sig` message.
 
 The receiver (ie. anchor creator) MUST fail the connection if the `commit_sig` does not sign its initial commitment transaction.  The receiver SHOULD broadcast the anchor transaction upon receipt of the signature; this ensures that it can use that signature on our initial commitment transaction to redeem the anchor funds in case of failure.
 
-### open_commit_sig message format ###
+### 2.3.1. open_commit_sig message format
 
     // Reply: signature for your initial commitment tx
     message open_commit_sig {
       required signature sig = 1;
     }
 
-## Waiting for the Anchor: open_complete ##
+## 2.4. Waiting for the Anchor: open_complete
 
 Once the anchor has reached `min_depth` in the blockchain, the node sends `open_complete` to indicate it is ready to transition to normal operating mode.  A node MUST NOT begin normal operation until it has both sent and received `open_complete`.  A node MAY fail the connection if it does not receive `open_complete` in a timely manner after the other's `min_depth` is reached.
 
-### open_complete message format ###
+### 2.4.1. open_complete message format
 
     // Indicates we've seen anchor reach min-depth.
     message open_complete {
       // FIXME: add a merkle proof plus block headers here?
     }
 
-# Normal Operation #
+# 3. Normal Operation
 
 Once both nodes have exchanged `open_complete`, the channel can be
 used to make payments via Hash TimeLocked Contracts.  Each node
@@ -279,7 +308,7 @@ Here, A received the signature and commits B's update but not its own
 (because B didn't acknowledge it); later B responds with a signature
 including A's update and A commits that update too.
 
-## Risks With HTLC Timeouts ##
+## 3.1. Risks With HTLC Timeouts
 
 HTLCs tend to be chained across the network.  For example, a node A
 might offer node B an HTLC with a timeout of 3 days, and node B might
@@ -311,7 +340,7 @@ each HTLC it offers.  A node MUST NOT offer a HTLC after this
 deadline, and MUST fail the connection if an HTLC which it offered is
 in either node's current commitment transaction past this deadline.
 
-## Adding an HTLC ##
+## 3.2. Adding an HTLC
 
 Either node can offer a HTLC to the other, which is redeemable in
 return for a hash preimage (sometimes referred to as R).  Amounts are
@@ -338,7 +367,7 @@ all past or future `update_add_htlc` messages.  A node MUST NOT set
 transaction.  A node MAY do this simply by incrementing a counter and
 assuming there will never be 2^64 messages.
 
-### update_add_htlc message format ###
+### 3.2.1. update_add_htlc message format
 
 	message update_add_htlc {
 	  // Unique identifier for this HTLC.
@@ -353,7 +382,7 @@ assuming there will never be 2^64 messages.
 	  required routing route = 5;
     }
 
-## Removing an HTLC: update_fulfill_htlc and update_fail_htlc ##
+## 3.3. Removing an HTLC: update_fulfill_htlc and update_fail_htlc
 
 For simplicity, a node can only remove HTLCs added by the other node.
 There are three reasons for removing an HTLC: it has timed out, it has
@@ -374,7 +403,7 @@ original HTLC initiator as defined in [4].  A node which closes an
 incoming HTLC in response to an `update_fail_htlc` message on an
 offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
-### update_fulfill_htlc message format ###
+### 3.3.1. update_fulfill_htlc message format
 
     // Complete your HTLC: I have the R value, pay me!
     message update_fulfill_htlc {
@@ -384,7 +413,7 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
       required sha256_hash r = 2;
     }
     
-### update_fail_htlc message format ###
+### 3.3.2. update_fail_htlc message format
 	
     message update_fail_htlc {
       // Which HTLC
@@ -393,7 +422,7 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 	  required fail_reason reason = 2;
     }
 
-## Updating Fees: update_fee ##
+## 3.4. Updating Fees: update_fee
 
 An `update_fee` message is used for a node to specify the fee for its
 next commitment transaction.
@@ -414,13 +443,13 @@ suggested that `fee_rate` be twice the amount estimated to allow entry
 into the next block, and that nodes accept a `fee_rate` up to ten
 times that same estimate.
 
-### update_fee message format ###
+### 3.4.1. update_fee message format
 	
     message update_fee {
       required uint32 fee_rate = 1;
     }
 
-## Signing HTLCs So Far: update_commit and update_revocation ##
+## 3.5. Signing HTLCs So Far: update_commit and update_revocation
 
 When a node wants to update the commitment transaction to include the
 staged changes, it generates the other node's commitment transaction with those changes, signs it and sends an `update_commit` message:
@@ -459,7 +488,7 @@ so will allow the other node to seize all the funds.  Nodes SHOULD NOT
 sign commitment transactions unless it is about to broadcast them (due
 to a failed connection), to reduce this risk.
 
-### update_commit message format ###
+### 3.5.1. update_commit message format
 
     // Commit all the staged HTLCs.
     message update_commit {
@@ -469,7 +498,7 @@ to a failed connection), to reduce this risk.
       required uint64 ack = 2;
     }
 
-### update_revocation message format ###
+### 3.5.2. update_revocation message format
 
     // Complete the update.
     message update_revocation {
@@ -481,7 +510,7 @@ to a failed connection), to reduce this risk.
       required uint64 ack = 3;
     }
 
-## Fee Calculation ##
+## 3.6. Fee Calculation
 
 Each node maintains a separate current fee rate for its own commitment
 transaction; if it needs to use the commitment transaction the fee
@@ -559,7 +588,7 @@ Fees are divided as following:
 3. If either to-`final_key` output is dust, eliminate it from the
    transaction.
 
-# Channel Close #
+# 4. Channel Close
 
 Nodes can negotiate a mutual close for the connection, which unlike a
 unilateral close, allows them to access their funds immediately and
@@ -570,7 +599,7 @@ that it wants to clear the channel (and thus will accept no new
 HTLCs), and once all HTLCs are resolved, the final channel close
 negotiation begins.
 
-## Closing initiation: close_clearing ##
+## 4.1. Closing initiation: close_clearing
 
 Either node (or both) can send a `close_clearing` message to initiate closing.
 
@@ -581,13 +610,13 @@ must not send more than one `close_clearing`.  A node MUST NOT send an
 
 A node MUST respond with `update_fail_htlc` to any HTLC received after it sent `close_clearing`.
 
-### close_clearing message format ###
+### 4.1.1. close_clearing message format
 
     // Start clearing out the channel HTLCs so we can close it
     message close_clearing {
     }
 
-## Closing negotiation: close_signature ##
+## 4.2. Closing negotiation: close_signature
 
 Once clearing is complete the final current commitment transactions
 will have no HTLCs, and fee negotiation begins.  Each node chooses a
@@ -628,7 +657,7 @@ previously-sent `close_fee`.
 Once a node has sent or received a `close_signature` with matching
 `close_fee` it SHOULD close the connection.
 
-### close_signature message format ###
+### 4.2.1. close_signature message format
 
     message close_signature {
 		// Fee in satoshis.
@@ -637,7 +666,7 @@ Once a node has sent or received a `close_signature` with matching
 		required signature sig = 2;
     }
 
-# Revocation Hashes #
+# 5. Revocation Hashes
 
 Revocation hashes are used to allow invalidation of old commitment
 transactions after a new one has been negotiated: the output scripts
@@ -668,14 +697,14 @@ Where "flip(B)" alternates the B'th least significant bit in the value P.
 The receiving node MAY store all previous R values, or MAY calculate
 it from a compact representation as described in [5].
 
-# On The Blockchain #
+# 6. On The Blockchain
 
 The blockchain is used to enforce commitments in the case where
 communication or cooperation breaks down between two nodes.  This is
 slower and more expensive that using off-chain signature exchanges,
 but vitally important for correct operation.
 
-## Monitoring the Blockchain ##
+## 6.1. Monitoring the Blockchain
 
 Once the anchor transaction is broadcast, a node MUST monitor for
 transactions which spend the anchor transaction, and if seen it MUST
@@ -691,7 +720,7 @@ A node MUST continue to monitor for (and react to) additional
 transactions until one transaction is deeply buried (usually
 considered to be between 6 and 100 blocks).
 
-## On-chain HTLCs ##
+## 6.2. On-chain HTLCs
 
 When a valid commitment transaction is broadcast, any HTLC outputs
 must be monitored and handled as follows:
@@ -713,7 +742,7 @@ there is an additional OP_CHECKSEQUENCEVERIFY delay (correponding to
 the other node's `open_channel` `delay` field) before it can spend the
 output.
 
-## Failing The Connection ##
+## 6.3. Failing The Connection
 
 Failure can happen under various circumstances, including protocol
 failures, unreachability, timeouts or deliberate abort decisions.
@@ -739,18 +768,18 @@ In the last two cases, the node MUST continue to monitor the
 blockchain for invalidated commitment transactions as in "Monitoring
 The Blockchain".
 
-### err message format ###
+### 6.3.1. err message format
 
     // This means we're going to hang up; it's to help diagnose only! 
     message error {
       optional string problem = 1;
     }
 
-# Security Considerations #
+# 7. Security Considerations
 
 Many.  Try not to Gox anyone.
 
-# References #
+# 8. References
 
 [1] https://github.com/google/protobuf
 
@@ -762,10 +791,10 @@ Many.  Try not to Gox anyone.
 
 [5] shachain design: https://github.com/rustyrussell/ccan/blob/master/ccan/crypto/shachain/design.txt
 
-# Acknowledgements #
+# Appendix A. Acknowledgements
 
 FIXME: Too many to list.
 
-# Feedback #
+# Appendix B. Feedback
 
 Feedback is welcome on the [lightning-dev list](https://lists.linuxfoundation.org/mailman/listinfo/lightning-dev).
