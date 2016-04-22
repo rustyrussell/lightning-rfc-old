@@ -93,6 +93,18 @@ identical after decryption.
 
 Channel establishment begins immediately after authentication, and consists of each node sending an `open_channel` message, followed by one node sending `open_anchor`, the other providing its `open_commit_sig` then both sides waiting for the anchor transaction to enter the blockchain and reach their specified depth, at which point they send `open_complete`.  After both sides have sent `open_complete` the channel is established and can begin normal operation.
 
+    +-------+                            +-------+
+    |       |--(1)--  open_channel  ---->|       |
+    |       |<-(2)--  open_channel  -----|       |
+    |       |                            |       |
+    |       |--(3)--  open_anchor   ---->|       |
+    |   A   |                            |   B   |
+    |       |<-(4)-- open_commit_sig ----|       |
+    |       |                            |       |
+    |       |--(5)-- open_complete  ---->|       |
+    |       |<-(6)-- open_complete  -----|       |
+    +-------+                            +-------+
+
 If this fails at any stage, or a node decides that the channel terms offered by the other node are not suitable, see "Failing The Connection".
 
 ## 2.1. The Initial open_channel message
@@ -207,8 +219,21 @@ Once the anchor has reached `min_depth` in the blockchain, the node sends `open_
 # 3. Normal Operation
 
 Once both nodes have exchanged `open_complete`, the channel can be
-used to make payments via Hash TimeLocked Contracts.  Each node
-stores:
+used to make payments via Hash TimeLocked Contracts.
+
+    +-------+                            +-------+
+    |       |--(1)---- add_htlc   ------>|       |
+    |       |--(2)---- add_htlc   ------>|       |
+    |       |                            |       |
+    |       |--(3)----   commit   ------>|       |
+    |   A   |                            |   B   |
+    |       |<-(4)---- revocation -------|       |
+    |       |<-(6)----   commit   -------|       |
+    |       |                            |       |
+    |       |<-(6)---- revocation -------|       |
+    +-------+                            +-------+
+
+Each node stores:
 
 1. Other node's previous obsoleted commitment transactions
 (or at least enough information to spend them, see [3]),
@@ -584,6 +609,16 @@ Closing happens in two stages: the first is by one side indicating
 that it wants to clear the channel (and thus will accept no new
 HTLCs), and once all HTLCs are resolved, the final channel close
 negotiation begins.
+
+    +-------+                              +-------+
+    |       |--(1)--  close_clearing  ---->|       |
+    |       |                              |       |
+    |       | <complete all pending htlcs> |       |
+    |   A   |             ...              |   B   |
+    |       |                              |       |
+    |       |<-(2)-- close_signature  -----|       |
+    |       |--(3)-- close_signature  ---->|       |
+    +-------+                              +-------+
 
 ## 4.1. Closing initiation: close_clearing
 
