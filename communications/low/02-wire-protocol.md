@@ -49,13 +49,13 @@ re-established from time to time, the design of the transport has been
 explicitly separated from the protocol.
 
 A node MUST handle continuing a previous channel on a new encrypted
-transport.  A node MUST set the `acknowledge` field in the header of
+transport.  A node MUST set the `ack` field in
 the `authenticate` message to the the number of previously-processed
 non-authenticate messages.  A node MUST NOT send out a message with an
-`acknowledge` field smaller than a previous `acknowledge` field.
+`ack` field lower than any previous `ack` field.
 
 A node MUST retransmit messages which may not have been included in the
-`authenticate` header's `acknowledge` field.
+`authenticate` header's `ack` field.
 
 A node retransmitting previous messages MUST ensure they are bitwise
 identical after decryption.
@@ -413,12 +413,16 @@ When a node wants to update the commitment transaction to include the
 staged changes, it generates the other node's commitment transaction with those changes, signs it and sends an `update_commit` message:
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
+* `ack`: the number of (non-`authenticate`) messages received.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
 
+A node MUST NOT send out a message with an `ack` field lower than any
+previous `ack` field.
+
 The receiving node creates its own new commitment transaction
 with the last `fee_rate` it has acknowledged, all the other node's staged changes and its own
-staged changes up to and including the message acknowledged by the `acknowledge` header.  The receiver MUST
+staged changes up to and including the message acknowledged by the `ack` field.  The receiver MUST
 check the signature is valid for that transaction.
 
 The receiver then responds with an `update_revocation` message which
@@ -426,10 +430,16 @@ contains the preimage for its old commitment transaction.
 
 * `revocation_preimage`: the SHA256() of this value is the revocation hash for the sender's old commitment transaction.
 * `next_revocation_hash`: the hash of the revocation for this node's next commitment transaction.
+* `ack`: the number of (non-`authenticate`) messages received.
 
 The receiver of `update_revocation` MUST check that the SHA256 hash of
 `revocation_preimage` matches the previous commitment transaction, and
 MUST fail if it does not.
+
+The `ack` field MUST correspond to the message number of the
+`update_commit` it is replying to.  This field is in fact redundant,
+but makes implementation simple (ie. ensure data persistence before
+sending any message with an `ack` field).
 
 Nodes MUST NOT broadcast old (revoked) commitment transactions; doing
 so will allow the other node to seize all the funds.  Nodes SHOULD NOT
@@ -442,6 +452,8 @@ to a failed connection), to reduce this risk.
     message update_commit {
       // Signature for your new commitment tx.
       required signature sig = 1;
+      // How many (non-authenticate) packets we've already received
+      required uint64 ack = 2;
     }
 
 ### update_revocation message format ###
@@ -452,6 +464,8 @@ to a failed connection), to reduce this risk.
       required sha256_hash revocation_preimage = 1;
       // Revocation hash for my next commit transaction
       required sha256_hash next_revocation_hash = 2;
+      // How many (non-authenticate) packets we've already received
+      required uint64 ack = 3;
     }
 
 ## Fee Calculation ##

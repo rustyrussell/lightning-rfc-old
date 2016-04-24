@@ -57,13 +57,10 @@ to encrypt data it sends.
 The protocol uses Authenticated Encryption with Additional Data using
 ChaCha20-Poly1305[2].
 
-Each message contains a header and a body.  The header consists of the following fields in order:
+Each message contains a length and a body.  `length` is a 4-byte little-endian field indicating the size of the unencrypted body.
 
-* `acknowledge`: an 8-byte little-endian field indicating the number of non-`authenticate` messages received and processed so far.
-* `length`: a 4-byte little-endian field indicating the size of the unencrypted body.
-
-The 12-byte header for each message is encrypted separately (resulting
-in a 28 byte header when the authentication tag is appended), to
+The 4-byte length for each message is encrypted separately (resulting
+in a 20 byte header when the authentication tag is appended), to
 offer additional protection from traffic analysis.
 
 The body also has a 16-byte authentication tag appended.
@@ -84,6 +81,8 @@ has still not been authenticated.  The first message sent MUST be an
 	  required bitcoin_pubkey node_id = 1;
 	  // Signature of your session key.
 	  required signature session_sig = 2;
+      // How many (non-authenticate) packets we've already received
+      optional uint64 ack = 3 [ default = 0 ];
 	};
 
 The receiving node MUST check that:
@@ -94,10 +93,10 @@ The receiving node MUST check that:
 3. `session_sig` is the signature of the SHA256 of SHA256 of the receivers
    `node_id`, using the secret key corresponding to the sender's `node_id`.
 
-The receiver MUST NOT examine the `acknowledge` value until after the
+The receiver MUST NOT examine the `ack` value until after the
 authentication fields have been successfully validated.  The
-`acknowledge` field MUST BE set to the number of non-authenticate
-messages received and processed.
+`ack` field MUST BE set to the number of non-authenticate
+messages received and processed if non-zero.
 
 Additional fields MAY be included, and MUST BE ignored if not
 understood (to allow for future extensions).
