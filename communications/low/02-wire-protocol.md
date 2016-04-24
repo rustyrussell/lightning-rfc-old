@@ -640,7 +640,9 @@ negotiation begins.
 
 ## 4.1. Closing initiation: close_clearing
 
-Either node (or both) can send a `close_clearing` message to initiate closing.
+Either node (or both) can send a `close_clearing` message to initiate closing:
+
+* `script_pubkey`: the output script for the close transaction.
 
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
 must not send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
@@ -651,15 +653,18 @@ A node MUST respond with `update_fail_htlc` to any HTLC received after it sent `
 
     // Start clearing out the channel HTLCs so we can close it
     message close_clearing {
+	  // Output script for mutual close tx.
+      required bytes script_pubkey = 1;
     }
 
 ## 4.2. Closing negotiation: close_signature
 
 Once clearing is complete the final current commitment transactions
 will have no HTLCs, and fee negotiation begins.  Each node chooses a
-fee and signs the close transaction with that fee, and sends the
-signature.  The process terminates when both agree on a fee, or one
-side fails the connection.
+fee and signs the close transaction the `script_pubkey` fields from
+the `close_celearing` messages and that fee, and sends the signature.
+The process terminates when both agree on a fee, or one side fails the
+connection.
 
 Nodes SHOULD send a `close_signature` message after `close_clearing` has
 been received and no HTLCs remain in either commitment transaction:
