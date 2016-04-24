@@ -626,12 +626,13 @@ negotiation begins.
 
     +-------+                              +-------+
     |       |--(1)--  close_clearing  ---->|       |
+    |       |<-(2)--  close_clearing  -----|       |
     |       |                              |       |
     |       | <complete all pending htlcs> |       |
     |   A   |             ...              |   B   |
     |       |                              |       |
-    |       |<-(2)-- close_signature  -----|       |
-    |       |--(3)-- close_signature  ---->|       |
+    |       |<-(3)-- close_signature  -----|       |
+    |       |--(4)-- close_signature  ---->|       |
     +-------+                              +-------+
 
 ## 4.1. Closing initiation: close_clearing
@@ -639,9 +640,7 @@ negotiation begins.
 Either node (or both) can send a `close_clearing` message to initiate closing.
 
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
-must not send more than one `close_clearing`.  A node MUST NOT send an
-`update_add_htlc` after sending an `update_commit` with an
-`acknowledge` header field acknowledging the other node's `close_clearing`.
+must not send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
 
 A node MUST respond with `update_fail_htlc` to any HTLC received after it sent `close_clearing`.
 
@@ -660,8 +659,7 @@ signature.  The process terminates when both agree on a fee, or one
 side fails the connection.
 
 Nodes SHOULD send a `close_signature` message after `close_clearing` has
-been received or acknowledged, and no HTLCs remain in either
-commitment transaction:
+been received and no HTLCs remain in either commitment transaction:
 
 * `close_fee`: the fee to offer for the close transaction (in satoshis).
 * `sig`: the signature for the close transaction with that fee.
