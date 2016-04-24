@@ -631,8 +631,11 @@ negotiation begins.
     |       | <complete all pending htlcs> |       |
     |   A   |             ...              |   B   |
     |       |                              |       |
-    |       |<-(3)-- close_signature  -----|       |
-    |       |--(4)-- close_signature  ---->|       |
+    |       |<-(3)-- close_signature F1----|       |
+    |       |--(4)-- close_signature F2--->|       |
+    |       |             ...              |       |
+    |       |--(?)-- close_signature Fn--->|       |
+    |       |<-(?)-- close_signature Fn----|       |
     +-------+                              +-------+
 
 ## 4.1. Closing initiation: close_clearing
