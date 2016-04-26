@@ -228,9 +228,9 @@ used to make payments via Hash TimeLocked Contracts.
     |       |--(3)----   commit   ------>|       |
     |   A   |                            |   B   |
     |       |<-(4)---- revocation -------|       |
-    |       |<-(6)----   commit   -------|       |
+    |       |<-(5)----   commit   -------|       |
     |       |                            |       |
-    |       |<-(6)---- revocation -------|       |
+    |       |--(6)---- revocation ------>|       |
     +-------+                            +-------+
 
 Each node stores:
