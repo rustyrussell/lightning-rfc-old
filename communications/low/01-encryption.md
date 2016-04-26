@@ -46,10 +46,10 @@ Now both nodes have obtained the shared secret, all messages are
 encrypted using keys derived from the shared secret.  Keys are derived
 as follows:
 
-* sending-key: SHA256(shared-secret || sending-node-id)
-* receiving-key: SHA256(shared-secret || receiving-node-id)
+* sending-key: SHA256(shared-secret || sending-node-session-pubkey)
+* receiving-key: SHA256(shared-secret || receiving-node-session-pubkey)
 
-ie. each node combines the secret with its node id to produce the key
+ie. each node combines the secret with its session public key to produce the key
 to encrypt data it sends.
 
 ## Encryption of Messages ##
