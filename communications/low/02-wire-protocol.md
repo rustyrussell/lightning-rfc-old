@@ -583,7 +583,7 @@ the bytecount for calculating commitment transaction fees.  Note that
 the fee requirement is unchanged, even if the elimination of dust HTLC
 outputs has caused a non-zero fee already.
 
-The fee for a transaction MUST be calculated by the multiplying this
+The fee for a transaction MUST be calculated by multiplying this
 bytecount by the fee rate, dividing by 1000 and truncating (rounding
 down) the result to an even number of satoshis.
 
