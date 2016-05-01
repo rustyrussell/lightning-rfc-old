@@ -379,9 +379,9 @@ Calculation" ).  A node SHOULD fail the connection if this occurs.
 `amount_msat` MUST BE greater than 0.
 
 A node MUST NOT add a HTLC if it would result in it offering more than
-1500 HTLCs in either commitment transaction.  At 32 bytes per HTLC
-output, this is comfortably under the 100k soft-limit for standard
-transaction relay.
+1500 HTLCs in either commitment transaction.  A node SHOULD fail the
+connection if this occurs.  At 32 bytes per HTLC output, this is
+comfortably under the 100k soft-limit for standard transaction relay.
 
 A node SHOULD NOT offer a HTLC with a timeout less than `delay` in the
 future.  See also "Risks With HTLC Timeouts".
@@ -483,6 +483,11 @@ staged changes, it generates the other node's commitment transaction with those 
 * `ack`: the number of (non-`authenticate`) messages received.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
+
+A node MUST acknowledge the previous `update_revocation` (if any) in
+the `update_commit` message.  A node SHOULD fail the connection if it
+receives an `update_commit` which does not acknowledge its previously
+sent `update_revocation`.
 
 A node MUST NOT send out a message with an `ack` field lower than any
 previous `ack` field.
@@ -647,7 +652,7 @@ Either node (or both) can send a `close_clearing` message to initiate closing:
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
 must not send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
 
-A node MUST respond with `update_fail_htlc` to any HTLC received after it sent `close_clearing`.
+A node MUST fail to route any HTLC added received after it sent `close_clearing`.
 
 ### 4.1.1. close_clearing message format
 
