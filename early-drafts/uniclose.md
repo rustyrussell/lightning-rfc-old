@@ -46,7 +46,7 @@ invalid transactions SHOULD be ignored.  For example, the next paragraph assumes
 that the spends are valid, correctly-signed transactions which can actually
 spend the output they claim.
 
-Ofter a channel is opened, the funding transaction output is
+After a channel is opened, the funding transaction output is
 considered *unresolved*; it is *resolved* by any transaction which
 spends that output.  A node MUST monitor the blockchain for
 transactions which spend any output which is not *irrevocably
@@ -86,7 +86,7 @@ When node A sees its own *commitment tx*:
 1. _A's main output_: A node SHOULD spend this output to a convenient address.
    This avoids having to remember the complicated witness script associated
    with that particular channel for later spending.  A node MUST wait until
-   the OP_CHECKSEQUENCEVERIFY delay has passed (as specified by the other
+   the `OP_CHECKSEQUENCEVERIFY` delay has passed (as specified by the other
    node's `open_channel` `delay` field) before spending the output.  If the
    output is spent (as recommended), the output is *resolved* by the spending
    transaction, otherwise it is considered *resolved* by the *commitment tx*.
@@ -123,7 +123,7 @@ block is greater than HTLC `expiry` (if in seconds).
 If the *commitment tx* is the other node's, the output is considered *timed
 out* once the HTLC is expired.  If the *commitment tx* is this node's, the
 output is considered *timed out* once the HTLC is expired, AND the output's
-OP_CHECKSEQUENCEVERIFY delay has passed.
+`OP_CHECKSEQUENCEVERIFY` delay has passed.
 
 If a node sees a redemption transaction, the output is considered *irrevocably
 resolved*, and the node MUST extract the preimage from the transaction input
@@ -173,8 +173,8 @@ this can be done within a standard transaction.
 
 # General Requirements
 
-A node SHOULD report an error to the operator if it sees a transaction
-transaction spend the funding transaction output which does not fall
+A node SHOULD report an error to the operator if it sees a transaction 
+spend the funding transaction output which does not fall
 into one of these categories (mutual close, unilateral close, or
 cheating attempt).  Such a transaction implies its private key has
 leaked, and funds may be lost
