@@ -379,9 +379,12 @@ Calculation" ).  A node SHOULD fail the connection if this occurs.
 `amount_msat` MUST BE greater than 0.
 
 A node MUST NOT add a HTLC if it would result in it offering more than
-1500 HTLCs in either commitment transaction.  A node SHOULD fail the
+300 HTLCs in either commitment transaction.  A node SHOULD fail the
 connection if this occurs.  At 32 bytes per HTLC output, this is
-comfortably under the 100k soft-limit for standard transaction relay.
+comfortably under the 100k soft-limit for standard transaction relay,
+and at a per-input BIP141 cost of 572[3], a transaction which spends
+all inputs is comfortably under the 400k cost limit, such as a steal
+transaction.
 
 A node SHOULD NOT offer a HTLC with a timeout less than `delay` in the
 future.  See also "Risks With HTLC Timeouts".
