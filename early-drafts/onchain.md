@@ -177,7 +177,7 @@ A node SHOULD report an error to the operator if it sees a transaction
 spend the funding transaction output which does not fall
 into one of these categories (mutual close, unilateral close, or
 cheating attempt).  Such a transaction implies its private key has
-leaked, and funds may be lost
+leaked, and funds may be lost.
 
 A node MAY simply watch the contents of the most-work chain for
 transactions, or MAY watch for (valid) broadcast transactions a.k.a
