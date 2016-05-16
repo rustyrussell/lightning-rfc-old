@@ -653,7 +653,7 @@ Either node (or both) can send a `close_clearing` message to initiate closing:
 * `script_pubkey`: the output script for the close transaction.
 
 A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
-must not send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
+MUST NOT send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
 
 A node MUST fail to route any HTLC added received after it sent `close_clearing`.
 
@@ -698,13 +698,13 @@ The receiver MUST check `sig` is valid for the close transaction with
 the given `close_fee`, and MUST fail the connection if it is not.
 
 If the receiver agrees with the fee, it SHOULD reply with a
-`close_signature` with the same `close_fee` value and sign and
-broadcast that closing transaction, otherwise it SHOULD propose a
-value strictly between the received `close_fee` and its
+`close_signature` with the same `close_fee` value, otherwise it SHOULD
+propose a value strictly between the received `close_fee` and its
 previously-sent `close_fee`.
 
 Once a node has sent or received a `close_signature` with matching
-`close_fee` it SHOULD close the connection.
+`close_fee` it SHOULD close the connection and SHOULD sign and
+broadcast the final closing transaction.
 
 ### 4.2.1. close_signature message format
 
