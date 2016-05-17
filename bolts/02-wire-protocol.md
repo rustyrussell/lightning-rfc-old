@@ -80,14 +80,13 @@ explicitly separated from the protocol.
 A node MUST handle continuing a previous channel on a new encrypted
 transport.  A node MUST set the `ack` field in
 the `authenticate` message to the the number of previously-processed
-non-authenticate messages.  A node MUST NOT send out a message with an
-`ack` field lower than any previous `ack` field.
+`update_commit` messages.  This corresponds to the number of `update_revocation` messages the node has sent.
 
-A node MUST retransmit messages which may not have been included in the
-`authenticate` header's `ack` field.
-
-A node retransmitting previous messages MUST ensure they are bitwise
-identical after decryption.
+A node MUST retransmit messages which may not have been included in
+the `authenticate` header's `ack` field.  A node retransmitting
+previous messages MUST ensure they are bitwise identical after
+decryption.  This avoids the need for an implementation to deal with
+commitments which were sent earlier then never re-transmitted.
 
 # 2. Channel Establishment
 
@@ -221,6 +220,9 @@ Once the anchor has reached `min_depth` in the blockchain, the node sends `open_
 Once both nodes have exchanged `open_complete`, the channel can be
 used to make payments via Hash TimeLocked Contracts.
 
+Changes are sent in batches: one or more messages are sent before an
+`update_commit` message, as in the following diagram:
+
     +-------+                            +-------+
     |       |--(1)---- add_htlc   ------>|       |
     |       |--(2)---- add_htlc   ------>|       |
@@ -233,105 +235,125 @@ used to make payments via Hash TimeLocked Contracts.
     |       |--(6)---- revocation ------>|       |
     +-------+                            +-------+
 
-Each node stores:
+Counterintuitively, these changes apply to the *other node's*
+commitment transaction; the node only adds those changes to its own
+commitment transaction when the remote node responds to the
+`update_commit`.  Thus each node (conceptually) tracks:
 
-1. Other node's previous obsoleted commitment transactions
-(or at least enough information to spend them, see [3]),
-2. The current HTLCs.
-3. The other node's signature on the commitment transaction created from current HTLCs.
-4. A list of staged changes proposed by the other node.
-5. A list of staged changes proposed by this node.
+1. *local commitment*: The current (unrevoked) commitment transaction for itself.
+2. *remote commitment*: The current (unrevoked) commitment transaction for the other node.
+3. Two *unacked changesets*: one for the local commitment (their proposals) and one for the remote (our proposals)
+4. Two *acked changesets*: one for the local commitment (our proposals, acknowledged) and one for the remote (their proposals, acknowledged).
 
-Note that updates are asynchronous, which means that the two
-commitment transactions may be out of sync in intermediate stages.
+(Note that an implementation MAY optimize this internally, for
+example, pre-applying the changesets in some cases).
 
-Each node can send messages offering new HTLCs or closing HTLCs
-offered by the other node, and then a signature to commit to those
-changes and any it has received: this message indicates the highest
-update number being applied, as there is a possible ambiguity for
-in-flight updates.  Once a node has received a signature for a new
-commitment transaction, it sends the revocation preimage which
-invalides the old one.
+As the two nodes updates are independent, the two commitment
+transactions may be out of sync indefinitely.  This is not concerning:
+what matters is whether both sides have committed to a particular HTLC
+or not.
 
-Here's an example:
+Here's a full example of simultaneous proposals, showing internal state:
 
-    NODE A                NODE B
-	Committed: []         Committed: []
-	Staged:    []         Staged:    []
+    NODE A                     NODE B
+	local: []                  local: []
+	remote:[]                  remote:[]
 
-A decides to offer a new HTLC X:
+A decides to offer a new HTLC X.  It adds it to the remote unacked
+changeset, and upon receipt B adds it to its local, unacked
+changeset.
 
-    Committed: []
-    Staged:    [X]
-         ADD HTLC X ----->
-	                      Committed: []
-	                      Staged:    [X]
+	local: []                        local: []
+	remote:[] unacked:+X             remote:[]
+	
+           ADD HTLC X --------------->
+	
+	                                 local:  [] unacked:+X
+	                                 remote: []
 
-B decides to offer a new HTLC Y:
+B decides to offer its own new HTLC Y; adding it to the remote
+unacked changeset.  A adds it to its local, unacked changeset:
 
-	                      Committed: []
-	                      Staged:    [X Y]
-            <---------- ADD HTLC Y
-    Committed: []
-    Staged:    [X Y]
+	local: []                        local: [] unacked:+X
+	remote:[] unacked:+X             remote:[] unacked:+Y
+	
+            <-------------------- ADD HTLC Y
+	
+	local: [] unacked:+Y
+	remote:[] unacked:+X
 
-A decides to commit its update, and the 1 update it got from B:
+A decides to commit its update; it applies all pending changes to the
+remote commitment (remembering the unacked ones for later), and sends
+the signature:
 
-         SIG 1 ----->
-	                      Committed: [X Y]
-	                      Staged:    []
+	local: [] unacked:+Y             local: [] unacked:+X
+	remote:[X] (unacked:+X)          remote:[] unacked:+Y
+	
+         COMMIT SIG[X] -------------->
+	
+	                                 local:  [X] (unacked:+X)
+	                                 remote: [] unacked:+Y
 
-B replies with the revocation preimage which invalidates its old
-commitment transaction, and a signature for the new commitment
-transaction which includes one update from A:
+As shown, B applies the changes to its local commitment transaction.
+It now replies with the revocation preimage; this also acknowledges
+the changes up until that commit message, so it adds the old unacked
+local changeset to its remote, acked changeset:
 
-             <--------- REVOCATION
-             <--------- SIG 1
+	local: [] unacked:+Y             local: [X]
+	remote:[X] (unacked:+X)          remote:[] unacked:+Y acked:+X
+	
+           <----------------------- REVOCATION
+	
+	local: [] unacked:+Y acked:+X
+	remote:[X]
 
-A receives this signature and now commits and sends its revocation
-preimage for its old commitment transaction:
+Receiving the revocation causes A to add the local unacked changeset
+(which it remembered when it send the commit message) to its remote,
+acked changeset.
 
-    Committed: [X Y]
-    Staged:    []
-             REVOCATION --------->
+Now B has two outstanding changes for the remote commitment; the
+unacked HTLC Y it proposed, and the acked HTLC X that A proposed.  It
+can now commit those, remembering the unacked ones:
 
-There are several alternate timing scenarios: if B decided to commit
-in parallel to A, before receiving A's update:
+	local: [] unacked:+Y acked:+X    local: [X]
+	remote:[X]                       remote:[Y X] (unacked:+Y)
+	
+	        <---------------- COMMIT SIG[Y X]
+	
+	local: [Y X] (unacked:+Y)
+	remote:[X]
 
-           NODE A                            NODE B
-                                              Committed: []
-                                              Staged:    [Y]
-                           <----------- ADD HTLC Y
-    Committed: []                                  
-    Staged:    [Y]
-    
-    
-    Committed: []                             Committed: [Y]
-    Staged:    [Y X]                          Staged:    []
-                ADD HTLC X -------  --- SIG 0
-                                  \/
-    Committed: [Y X]              /\
-    Staged:    []                /  -->
-                     SIG 1 ---  /             Committed: [Y]
-                              \/              Staged:    [X]               
-                              /\   
-                           <--  ------> 
-    Committed: [Y]
-    Staged:    [X]
-    
-                REVOCATION ----------->
+As shown, A applies the changes queued for its local commitment.  It
+now replies with the revocation preimage which invalidates its old
+commitment transaction, and the unacked local changes become the
+remote acked changes:
 
-                           <----------- REVOCATION
-                                              Committed: [Y X]     
-                                              Staged:    []
-                           <----------- SIG 1
-    Committed: [Y X]
-    Staged:    []
-                REVOCATION ----------->
+	local: [Y X]
+	remote:[X] acked:+Y
+	
+           REVOCATION ----------------->
+	
+	                                 local: [X] acked:+Y
+	                                 remote:[Y X]
 
-Here, A received the signature and commits B's update but not its own
-(because B didn't acknowledge it); later B responds with a signature
-including A's update and A commits that update too.
+As shown, when B receives the revocation response it adds the unacked
+remote changeset it had applied above to the acked local changeset.
+
+Now, node A has uncommitted changes to the remote commitment, so it
+sends the final commit.  As there are no unacked changes, the local
+commitment is not changed.  B applies the changes to its local
+commitment and responds, but again there are no unacked changes so
+neither the local nor remote change:
+
+	local: [Y X]
+	remote:[X Y]
+	
+           COMMIT ------------------->
+	
+	                                 local: [X Y]
+	                                 remote:[Y X]
+	
+           <------------------- REVOCATION
 
 ## 3.1. Risks With HTLC Timeouts
 
@@ -395,6 +417,10 @@ all past or future `update_add_htlc` messages.  A node MUST NOT set
 transaction.  A node MAY do this simply by incrementing a counter and
 assuming there will never be 2^64 messages.
 
+The sending node MUST add the HTLC addition to the unacked changeset
+for its remote commitment, and the receiving node MUST add the HTLC
+addition to the unacked changeset for its local commitment.
+
 ### 3.2.1. update_add_htlc message format
 
 	message update_add_htlc {
@@ -431,6 +457,10 @@ original HTLC initiator as defined in [4].  A node which closes an
 incoming HTLC in response to an `update_fail_htlc` message on an
 offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
+The sending node MUST add the HTLC fulfill/fail to the unacked
+changeset for its remote commitment, and the receiving node MUST add
+the HTLC fulfill/fail to the unacked changeset for its local commitment.
+
 ### 3.3.1. update_fulfill_htlc message format
 
     // Complete your HTLC: I have the R value, pay me!
@@ -452,8 +482,11 @@ offered HTLC MUST copy this field to the outgoing `update_fail_htlc`.
 
 ## 3.4. Updating Fees: update_fee
 
-An `update_fee` message is used for a node to specify the fee for its
-next commitment transaction.
+An `update_fee` message is used for a node to specify the fee for *its
+own* next commitment transaction, but use the same mechanism as other
+updates: apply to the remote commitment first, then the local
+commitment upon acknowledgement.  Thus fee changes only have an effect
+when they are applied from the unacked queue.
 
 A node SHOULD track bitcoin fees independently, and SHOULD send an
 `update_fee` message whenever they change significantly.  It MAY
@@ -471,6 +504,10 @@ suggested that `fee_rate` be twice the amount estimated to allow entry
 into the next block, and that nodes accept a `fee_rate` up to ten
 times that same estimate.
 
+The sending node MUST add the fee change to the unacked changeset for
+its remote commitment, and the receiving node MUST add the fee change
+to the unacked changeset for its local commitment.
+
 ### 3.4.1. update_fee message format
 	
     message update_fee {
@@ -479,47 +516,42 @@ times that same estimate.
 
 ## 3.5. Signing HTLCs So Far: update_commit and update_revocation
 
-When a node wants to update the commitment transaction to include the
-staged changes, it generates the other node's commitment transaction with those changes, signs it and sends an `update_commit` message:
+When a node has changes for the remote commitment, it can apply them,
+sign the resulting transaction and send an `update_commit` message:
 
-* `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's commitment transaction.
-* `ack`: the number of (non-`authenticate`) messages received.
+* `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's local commitment transaction (ie. sender's remote commitment transaction).
+
+A sending node MUST apply all remote acked and unacked changes except
+unacked fee changes to the remote commitment before generating `sig`.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
 
-A node MUST acknowledge the previous `update_revocation` (if any) in
-the `update_commit` message.  A node SHOULD fail the connection if it
-receives an `update_commit` which does not acknowledge its previously
-sent `update_revocation`.
+A receiving node MUST apply all local acked and unacked changes except
+unacked fee changes to the local commitment, then it MUST check `sig`
+is valid for that transaction.
 
-A node MUST NOT send out a message with an `ack` field lower than any
-previous `ack` field.
-
-The receiving node creates its own new commitment transaction
-with the last `fee_rate` it has acknowledged, all the other node's staged changes and its own
-staged changes up to and including the message acknowledged by the `ack` field.  The receiver MUST
-check the signature is valid for that transaction.
-
-The receiver then responds with an `update_revocation` message which
-contains the preimage for its old commitment transaction.
+The receiver MUST respond with an `update_revocation` message which
+contains the preimage for its old commitment transaction:
 
 * `revocation_preimage`: the SHA256() of this value is the revocation hash for the sender's old commitment transaction.
 * `next_revocation_hash`: the hash of the revocation for this node's next commitment transaction.
-* `ack`: the number of (non-`authenticate`) messages received.
+
+The node sending `update_revocation` MUST add the local unacked
+changes to the set of remote acked changes.
 
 The receiver of `update_revocation` MUST check that the SHA256 hash of
 `revocation_preimage` matches the previous commitment transaction, and
-MUST fail if it does not.
-
-The `ack` field MUST correspond to the message number of the
-`update_commit` it is replying to.  This field is in fact redundant,
-but makes implementation simple (ie. ensure data persistence before
-sending any message with an `ack` field).
+MUST fail if it does not.  That node MUST add the remote unacked
+changes to the set of local acked changes.
 
 Nodes MUST NOT broadcast old (revoked) commitment transactions; doing
 so will allow the other node to seize all the funds.  Nodes SHOULD NOT
 sign commitment transactions unless it is about to broadcast them (due
 to a failed connection), to reduce this risk.
+
+An implementation MAY choose not to send an `update_commit` until it
+receives the `update_revocation` response to the previous
+`update_commit`, so there is only ever one unrevoked local commitment.
 
 ### 3.5.1. update_commit message format
 
@@ -527,8 +559,6 @@ to a failed connection), to reduce this risk.
     message update_commit {
       // Signature for your new commitment tx.
       required signature sig = 1;
-      // How many (non-authenticate) packets we've already received
-      required uint64 ack = 2;
     }
 
 ### 3.5.2. update_revocation message format
@@ -539,8 +569,6 @@ to a failed connection), to reduce this risk.
       required sha256_hash revocation_preimage = 1;
       // Revocation hash for my next commit transaction
       required sha256_hash next_revocation_hash = 2;
-      // How many (non-authenticate) packets we've already received
-      required uint64 ack = 3;
     }
 
 ## 3.6. Fee Calculation
