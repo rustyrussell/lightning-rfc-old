@@ -167,9 +167,8 @@ The fields of this message are:
 * `txid`: the transaction ID of the anchor transaction.
 * `output_index`: the index of the output which is to fund the channel.
 * `amount`: the amount in satoshis of the `output_index` output of `txid`.
-* `commit_sig`: the signature for the receiver's initial commitment transaction.
 
-The receiver MAY fail the connection if `amount` is too low; the sender MUST offer an `amount` sufficient to cover the fees of both initial commitment transactions.  The receiver MUST fail the connection if the `commit_sig` does not sign its initial commit transaction.
+The receiver MAY fail the connection if `amount` is too low; the sender MUST offer an `amount` sufficient to cover the fees of both initial commitment transactions.
 
 The sender MUST NOT offer an `amount` in excess of 4294967 satoshis;
 the receiver MAY fail the connection if `amount` is greater than this
@@ -186,9 +185,6 @@ can be represented by 32 bits.
       required uint32 output_index = 2;
       // Amount of anchor output.
       required uint64 amount = 3;
-    
-      // Signature for your initial commitment tx.
-      required signature commit_sig = 4;
     }
 
 ## 2.3. Accepting the Anchor Transaction: open_commit_sig
@@ -834,8 +830,8 @@ failures, a node SHOULD send an informative `err` message.
 The behaviour when failing a connection depends on the state:
 
 1. If no anchor has been broadcast, nothing need be done.
-2. If no HTLC was ever created, the latest commitment transaction
-SHOULD be broadcast.
+2. If no commitment signature have ever been received (ie. non-funding
+   side before the first HTLC), nothing need be done.
 3. If a valid `close_signature` was received, the node SHOULD use
 `sig` to create a close transaction, which SHOULD be broadcast.  (The last `close_signature` is closest to our desired fee).
 4. Otherwise, the node SHOULD sign and broadcast the latest commitment
