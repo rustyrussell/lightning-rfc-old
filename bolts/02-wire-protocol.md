@@ -409,7 +409,7 @@ future.  See also "Risks With HTLC Timeouts".
 
 A node SHOULD set `id` to a unique identifier for this HTLC amongst
 all past or future `update_add_htlc` messages.  A node MUST NOT set
-`id` equal to another HTLC which is in the current staged commitment
+`id` equal to another HTLC which is in any unrevoked commitment
 transaction.  A node MAY do this simply by incrementing a counter and
 assuming there will never be 2^64 messages.
 
