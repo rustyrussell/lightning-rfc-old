@@ -407,10 +407,8 @@ transaction.
 A node SHOULD NOT offer a HTLC with a timeout less than `delay` in the
 future.  See also "Risks With HTLC Timeouts".
 
-A node SHOULD set `id` to a unique identifier for this HTLC amongst
-all past or future `update_add_htlc` messages.  A node MUST NOT set
-`id` equal to another HTLC which is in any unrevoked commitment
-transaction.  A node MAY do this simply by incrementing a counter and
+A node MUST set `id` to a unique identifier for this HTLC amongst
+all past or future `update_add_htlc` messages.  A node MAY do this simply by incrementing a counter and
 assuming there will never be 2^64 messages.
 
 The sending node MUST add the HTLC addition to the unacked changeset
