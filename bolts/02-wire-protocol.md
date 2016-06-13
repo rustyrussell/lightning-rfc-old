@@ -385,19 +385,19 @@ in either node's current commitment transaction past this deadline.
 
 ## 3.2. Adding an HTLC
 
-Either node can offer a HTLC to the other, which is redeemable in
+Either node can send `update_add_htlc` to offer a HTLC to the other, which is redeemable in
 return for a hash preimage (sometimes referred to as R).  Amounts are
 in millisatoshi, though on-chain enforcement is only possible for
 whole satoshi amounts: in commitment transactions these are rounded
 down as specified in [3].
 
-A node MUST NOT offer `amount_msat` it cannot pay for in both
-commitment transactions at the current `fee_rate` (see "Fee
+A node MUST NOT offer `amount_msat` it cannot pay for in the remote
+commitment transaction at the current `fee_rate` (see "Fee
 Calculation" ).  A node SHOULD fail the connection if this occurs.
 `amount_msat` MUST BE greater than 0.
 
 A node MUST NOT add a HTLC if it would result in it offering more than
-300 HTLCs in either commitment transaction.  A node SHOULD fail the
+300 HTLCs in the remote commitment transaction.  A node SHOULD fail the
 connection if this occurs.  At 32 bytes per HTLC output, this is
 comfortably under the 100k soft-limit for standard transaction relay,
 and at a per-input BIP141 cost of 572[3], a transaction which spends
@@ -489,6 +489,17 @@ simply send an `update_fee` message on every new bitcoin block.
 A node MUST update bitcoin fees if it estimates that the current
 commitment transaction will not be processed in a timely manner (see
 "Risks With HTLC Timeouts").
+
+The sending node MUST NOT send a `fee_rate` which it could not afford
+(see "Fee Calculation), were it applied to the receiving node's
+commitment transaction.  The receiving node SHOULD fail the connection
+if this occurs.
+
+Note the unusual check here: the fee rate sent by node A to B will be
+applied at some future point to the A's commitment transaction, but we
+check the fee against B's commitment transaction for validity.  This
+is because B might be adding HTLCs which haven't been received by A,
+which thus doesn't know that the fee rate will be unaffortable.  This check is both simple, and deterministic.
 
 The receiving node MAY fail the connection if the `update_fee` is too
 high.
