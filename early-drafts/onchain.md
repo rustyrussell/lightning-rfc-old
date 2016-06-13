@@ -133,7 +133,9 @@ Note that we don't care about the fate of the redemption transaction itself
 once we've extracted the preimage; the knowledge is not revocable.
 
 If the output has *timed out* and not been *resolved*, the node MUST *resolve*
-the output by spending it.
+the output by spending it.  The node SHOULD provide sufficient fee that this
+transaction spending the output is mined before the incoming HTLC times out,
+to avoid the risk of one-sided redemption.
 
 Note that in cases where both resolutions are possible (redemption seen after
 timeout, for example), either intepretation is acceptable; it is the
@@ -141,9 +143,9 @@ responsibility of the other node to ensure that doesn't occur.
 
 ### On-chain HTLC Handling: Their Offers
 
-If the node receives a redemption preimage for a *commitment tx* output it was
+If the node receives (or already knows) a redemption preimage for an unresolved *commitment tx* output it was
 offered, it MUST *resolve* the output by spending it using the preimage.
-Otherwise, the other node could spend it once it as *timed out* as above.
+Without this, the other node could spend it once it as *timed out* as above.
 
 Otherwise, if the output HTLC has expired, it is considered *irrevocably
 resolved*.  In theory, time could go backwards due to a blockchain
@@ -168,7 +170,7 @@ preimage, it *resolves* the funding transaction output:
    revocation preimage.
 
 The node MAY use a single transaction to *resolve* all the outputs;
-due to the 450 HTLC-per-party limit (See BOLT #2: 3.2. Adding an HTLC)
+due to the 300 HTLC-per-party limit (See BOLT #2: 3.2. Adding an HTLC)
 this can be done within a standard transaction.
 
 # General Requirements
