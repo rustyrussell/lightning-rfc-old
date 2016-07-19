@@ -81,7 +81,7 @@ has still not been authenticated.  The first message sent MUST be an
 	  required bitcoin_pubkey node_id = 1;
 	  // Signature of your session key.
 	  required signature session_sig = 2;
-      // How many (non-authenticate) packets we've already received
+      // How many update_commit and update_revocation messages already received
       optional uint64 ack = 3 [ default = 0 ];
 	};
 
@@ -93,10 +93,12 @@ The receiving node MUST check that:
 3. `session_sig` is the signature of the SHA256 of SHA256 of the its
    own sessionpubkey, using the secret key corresponding to the sender's `node_id`.
 
+The `ack` field allows reconnection of a previously-established connection.
+
 The receiver MUST NOT examine the `ack` value until after the
 authentication fields have been successfully validated.  The
-`ack` field MUST BE set to the number of non-authenticate
-messages received and processed if non-zero.
+`ack` field MUST BE set to the number of `update_commit`, `open_commit_sig`
+and `update_revocation` messages received and processed.
 
 Additional fields MAY be included, and MUST BE ignored if not
 understood (to allow for future extensions).
