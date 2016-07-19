@@ -90,8 +90,8 @@ The receiving node MUST check that:
 1. `node_id` is the expected value for the sending node.
 2. `session_sig` is a valid secp256k1 ECDSA signature encoded as a
 32-byte big endian R value, followed by a 32-byte big endian S value.
-3. `session_sig` is the signature of the SHA256 of SHA256 of the receivers
-   `node_id`, using the secret key corresponding to the sender's `node_id`.
+3. `session_sig` is the signature of the SHA256 of SHA256 of the its
+   own sessionpubkey, using the secret key corresponding to the sender's `node_id`.
 
 The receiver MUST NOT examine the `ack` value until after the
 authentication fields have been successfully validated.  The
