@@ -27,20 +27,20 @@ these phases.
    * 1.1. pkt message format
    * 1.2. Persistence and Retransmission
 * 2. Channel Establishment
-   * 2.1. The Initial open_channel message
-   * 2.2. Describing the anchor transaction: open_anchor
-   * 2.3. Accepting the Anchor Transaction: open_commit_sig
-   * 2.4. Waiting for the Anchor: open_complete
+   * 2.1. The Initial `open_channel` message
+   * 2.2. Describing the anchor transaction: `open_anchor`
+   * 2.3. Accepting the Anchor Transaction: `open_commit_sig`
+   * 2.4. Waiting for the Anchor: `open_complete`
 * 3. Normal Operation
    * 3.1. Risks With HTLC Timeouts
    * 3.2. Adding an HTLC
-   * 3.3. Removing an HTLC: update_fulfill_htlc and update_fail_htlc
-   * 3.4. Updating Fees: update_fee
-   * 3.5. Signing HTLCs So Far: update_commit and update_revocation
+   * 3.3. Removing an HTLC: `update_fulfill_htlc` and `update_fail_htlc`
+   * 3.4. Updating Fees: `update_fee`
+   * 3.5. Signing HTLCs So Far: `update_commit` and `update_revocation`
    * 3.6. Fee Calculation
 * 4. Channel Close
-   * 4.1. Closing initiation: close_clearing
-   * 4.2. Closing negotiation: close_signature
+   * 4.1. Closing initiation: `close_clearing`
+   * 4.2. Closing negotiation: `close_signature`
 * 5. Revocation Hashes
 * 6. On The Blockchain
    * 6.1. Monitoring the Blockchain
@@ -136,7 +136,7 @@ Channel establishment begins immediately after authentication, and consists of e
 
 If this fails at any stage, or a node decides that the channel terms offered by the other node are not suitable, see "Failing The Connection".
 
-## 2.1. The Initial open_channel message
+## 2.1. The Initial `open_channel` message
 
 The first message for a new connection after authentication is the
 `open_channel` message.  This contains information about each node, and
@@ -158,7 +158,7 @@ The negotiation fields which place requirements on the receiver are:
 Each `bitcoin_pubkey` field MUST be a valid compressed 33-byte
 DER-encoded bitcoin public key.
 
-### 2.1.1. open_channel message format
+### 2.1.1. `open_channel` message format
 
     // Set channel params.
     message open_channel {
@@ -188,7 +188,7 @@ DER-encoded bitcoin public key.
       required uint32 initial_fee_rate = 7;
     }
 
-## 2.2. Describing the anchor transaction: open_anchor
+## 2.2. Describing the anchor transaction: `open_anchor`
 
 Whichever node offered the anchor (`WILL_CREATE_ANCHOR`) will initially fund the channel.  This node will create a transaction with an output redeemable by the `commit_key`s from both nodes (see [3]), which it MUST NOT broadcast.  It then sends an `open_anchor` message which allows the recipient to calculate the signature for the initial commitment transaction.
 
@@ -205,7 +205,7 @@ the receiver MAY fail the connection if `amount` is greater than this
 amount.  This ensures that any possible HTLC amounts (in millisatoshi)
 can be represented by 32 bits.
 
-### 2.2.1. open_anchor message format
+### 2.2.1. `open_anchor` message format
 
     // Whoever is supplying anchor sends this.
     message open_anchor {
@@ -217,24 +217,24 @@ can be represented by 32 bits.
       required uint64 amount = 3;
     }
 
-## 2.3. Accepting the Anchor Transaction: open_commit_sig
+## 2.3. Accepting the Anchor Transaction: `open_commit_sig`
 
 Upon accepting the `open_anchor` message, the node creates a signature for the anchor creator's initial commitment transaction, and sends it in an `open_commit_sig` message.
 
 The receiver (ie. anchor creator) MUST fail the connection if the `commit_sig` does not sign its initial commitment transaction.  The receiver SHOULD broadcast the anchor transaction upon receipt of the signature; this ensures that it can use that signature on our initial commitment transaction to redeem the anchor funds in case of failure.
 
-### 2.3.1. open_commit_sig message format
+### 2.3.1. `open_commit_sig` message format
 
     // Reply: signature for your initial commitment tx
     message open_commit_sig {
       required signature sig = 1;
     }
 
-## 2.4. Waiting for the Anchor: open_complete
+## 2.4. Waiting for the Anchor: `open_complete`
 
 Once the anchor has reached `min_depth` in the blockchain, the node sends `open_complete` to indicate it is ready to transition to normal operating mode.  A node MUST NOT begin normal operation until it has both sent and received `open_complete`.  A node MAY fail the connection if it does not receive `open_complete` in a timely manner after the other's `min_depth` is reached.
 
-### 2.4.1. open_complete message format
+### 2.4.1. `open_complete` message format
 
     // Indicates we've seen anchor reach min-depth.
     message open_complete {
@@ -445,7 +445,7 @@ The sending node MUST add the HTLC addition to the unacked changeset
 for its remote commitment, and the receiving node MUST add the HTLC
 addition to the unacked changeset for its local commitment.
 
-### 3.2.1. update_add_htlc message format
+### 3.2.1. `update_add_htlc` message format
 
 	message update_add_htlc {
 	  // Unique identifier for this HTLC.
@@ -460,7 +460,7 @@ addition to the unacked changeset for its local commitment.
 	  required routing route = 5;
     }
 
-## 3.3. Removing an HTLC: update_fulfill_htlc and update_fail_htlc
+## 3.3. Removing an HTLC: `update_fulfill_htlc` and `update_fail_htlc`
 
 For simplicity, a node can only remove HTLCs added by the other node.
 There are three reasons for removing an HTLC: it has timed out, it has
@@ -485,7 +485,7 @@ The sending node MUST add the HTLC fulfill/fail to the unacked
 changeset for its remote commitment, and the receiving node MUST add
 the HTLC fulfill/fail to the unacked changeset for its local commitment.
 
-### 3.3.1. update_fulfill_htlc message format
+### 3.3.1. `update_fulfill_htlc` message format
 
     // Complete your HTLC: I have the R value, pay me!
     message update_fulfill_htlc {
@@ -495,7 +495,7 @@ the HTLC fulfill/fail to the unacked changeset for its local commitment.
       required sha256_hash r = 2;
     }
     
-### 3.3.2. update_fail_htlc message format
+### 3.3.2. `update_fail_htlc` message format
 	
     message update_fail_htlc {
       // Which HTLC
@@ -504,7 +504,7 @@ the HTLC fulfill/fail to the unacked changeset for its local commitment.
 	  required fail_reason reason = 2;
     }
 
-## 3.4. Updating Fees: update_fee
+## 3.4. Updating Fees: `update_fee`
 
 An `update_fee` message is used for a node to specify the fee for *its
 own* next commitment transaction, but use the same mechanism as other
@@ -543,13 +543,13 @@ The sending node MUST add the fee change to the unacked changeset for
 its remote commitment, and the receiving node MUST add the fee change
 to the unacked changeset for its local commitment.
 
-### 3.4.1. update_fee message format
+### 3.4.1. `update_fee` message format
 	
     message update_fee {
       required uint32 fee_rate = 1;
     }
 
-## 3.5. Signing HTLCs So Far: update_commit and update_revocation
+## 3.5. Signing HTLCs So Far: `update_commit` and `update_revocation`
 
 When a node has changes for the remote commitment, it can apply them,
 sign the resulting transaction and send an `update_commit` message:
@@ -588,7 +588,7 @@ An implementation MAY choose not to send an `update_commit` until it
 receives the `update_revocation` response to the previous
 `update_commit`, so there is only ever one unrevoked local commitment.
 
-### 3.5.1. update_commit message format
+### 3.5.1. `update_commit` message format
 
     // Commit all the staged HTLCs.
     message update_commit {
@@ -596,7 +596,7 @@ receives the `update_revocation` response to the previous
       required signature sig = 1;
     }
 
-### 3.5.2. update_revocation message format
+### 3.5.2. `update_revocation` message format
 
     // Complete the update.
     message update_revocation {
@@ -709,7 +709,7 @@ negotiation begins.
     |       |<-(?)-- close_signature Fn----|       |
     +-------+                              +-------+
 
-## 4.1. Closing initiation: close_clearing
+## 4.1. Closing initiation: `close_clearing`
 
 Either node (or both) can send a `close_clearing` message to initiate closing:
 
@@ -720,7 +720,7 @@ MUST NOT send more than one `close_clearing`.  A node SHOULD send a `close_clear
 
 A node MUST fail to route any HTLC added received after it sent `close_clearing`.
 
-### 4.1.1. close_clearing message format
+### 4.1.1. `close_clearing` message format
 
     // Start clearing out the channel HTLCs so we can close it
     message close_clearing {
@@ -728,7 +728,7 @@ A node MUST fail to route any HTLC added received after it sent `close_clearing`
       required bytes script_pubkey = 1;
     }
 
-## 4.2. Closing negotiation: close_signature
+## 4.2. Closing negotiation: `close_signature`
 
 Once clearing is complete the final current commitment transactions
 will have no HTLCs, and fee negotiation begins.  Each node chooses a
@@ -769,7 +769,7 @@ Once a node has sent or received a `close_signature` with matching
 `close_fee` it SHOULD close the connection and SHOULD sign and
 broadcast the final closing transaction.
 
-### 4.2.1. close_signature message format
+### 4.2.1. `close_signature` message format
 
     message close_signature {
 		// Fee in satoshis.
@@ -880,7 +880,7 @@ In the last two cases, the node MUST continue to monitor the
 blockchain for invalidated commitment transactions as in "Monitoring
 The Blockchain".
 
-### 6.3.1. err message format
+### 6.3.1. `error` message format
 
     // This means we're going to hang up; it's to help diagnose only! 
     message error {
