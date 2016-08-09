@@ -78,15 +78,45 @@ re-established from time to time, the design of the transport has been
 explicitly separated from the protocol.
 
 A node MUST handle continuing a previous channel on a new encrypted
-transport.  A node MUST set the `ack` field in
-the `authenticate` message to the the number of previously-processed
-`update_commit` messages.  This corresponds to the number of `update_revocation` messages the node has sent.
+transport.  A node reconnecting after receiving or sending an
+`open_channel` message SHOULD send a `reconnect` message on the new
+connection immediately after it has validated the `authenticate`
+message.  A node MAY forget old nodes which have not sent or received
+an `open_commit_sig` message.
 
-A node MUST retransmit messages which may not have been included in
-the `authenticate` header's `ack` field.  A node retransmitting
-previous messages MUST ensure they are bitwise identical after
-decryption.  This avoids the need for an implementation to deal with
-commitments which were sent earlier then never re-transmitted.
+On disconnection, a node MUST reverse any uncommitted changes sent by
+the other side (ie. `update_add_htlc`, `update_fee`,
+`update_fail_htlc` and `update_fulfill_htlc` for which no
+`update_commit` has been received).  A node SHOULD retain the `r`
+value from the `update_fulfill_htlc`, however.
+
+A node MUST set the `ack` field in the `reconnect` message to the the
+sum of previously-processed messages of types `open_commit_sig`,
+`update_commit`, `update_revocation`, `close_clearing` and
+`close_signature`.
+
+A node MAY assume that only one of each type of message need be
+retransmitted.  A node SHOULD retransmit the last of each message type
+which was not counted by the `ack` field.  Before retransmitting
+`update_commit`, the node MUST send appropriate `update_add_htlc`,
+`update_fee`, `update_fail_htlc` or `update_fulfill_htlc` messages
+(the other node will have forgotten them, as required above).
+
+A node MAY simply retransmit messages which are identical to the
+previous transmission.  A node MUST not assume that
+previously-transmitted messages were lost: in particular, if there is
+a previous `update_commit` message, a node MUST handle the case where
+the corresponding commitment transaction is broadcast by the other
+side at any time.  This is particularly important if a node does not
+simply retransmit the exact same `update_commit` as previously sent.
+
+### 1.2.1. reconnect message format.
+
+	// We're reconnecting, here's what we've received already.
+	message reconnect {
+		// open_commit_sig + update_commit + update_revocation + close_clearing + close_signature received.
+		required uint64 ack = 1;
+	}
 
 # 2. Channel Establishment
 
