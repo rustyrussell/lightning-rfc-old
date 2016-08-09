@@ -272,7 +272,8 @@ commitment transaction when the remote node responds to the
 4. Two *acked changesets*: one for the local commitment (our proposals, acknowledged) and one for the remote (their proposals, acknowledged).
 
 (Note that an implementation MAY optimize this internally, for
-example, pre-applying the changesets in some cases).
+example, pre-applying the changesets in some cases, or simply keeping a state
+associated with each HTLC for the latest commitment transactions).
 
 As the two nodes updates are independent, the two commitment
 transactions may be out of sync indefinitely.  This is not concerning:
