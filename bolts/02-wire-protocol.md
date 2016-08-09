@@ -39,7 +39,7 @@ these phases.
    * 3.5. Signing HTLCs So Far: `update_commit` and `update_revocation`
    * 3.6. Fee Calculation
 * 4. Channel Close
-   * 4.1. Closing initiation: `close_clearing`
+   * 4.1. Closing initiation: `close_shutdown`
    * 4.2. Closing negotiation: `close_signature`
 * 5. Revocation Hashes
 * 6. On The Blockchain
@@ -92,7 +92,7 @@ value from the `update_fulfill_htlc`, however.
 
 A node MUST set the `ack` field in the `reconnect` message to the the
 sum of previously-processed messages of types `open_commit_sig`,
-`update_commit`, `update_revocation`, `close_clearing` and
+`update_commit`, `update_revocation`, `close_shutdown` and
 `close_signature`.
 
 A node MAY assume that only one of each type of message need be
@@ -114,7 +114,7 @@ simply retransmit the exact same `update_commit` as previously sent.
 
 	// We're reconnecting, here's what we've received already.
 	message reconnect {
-		// open_commit_sig + update_commit + update_revocation + close_clearing + close_signature received.
+		// open_commit_sig + update_commit + update_revocation + close_shutdown + close_signature received.
 		required uint64 ack = 1;
 	}
 
@@ -697,8 +697,8 @@ HTLCs), and once all HTLCs are resolved, the final channel close
 negotiation begins.
 
     +-------+                              +-------+
-    |       |--(1)--  close_clearing  ---->|       |
-    |       |<-(2)--  close_clearing  -----|       |
+    |       |--(1)--  close_shutdown  ---->|       |
+    |       |<-(2)--  close_shutdown  -----|       |
     |       |                              |       |
     |       | <complete all pending htlcs> |       |
     |   A   |             ...              |   B   |
@@ -710,35 +710,35 @@ negotiation begins.
     |       |<-(?)-- close_signature Fn----|       |
     +-------+                              +-------+
 
-## 4.1. Closing initiation: `close_clearing`
+## 4.1. Closing initiation: `close_shutdown`
 
-Either node (or both) can send a `close_clearing` message to initiate closing:
+Either node (or both) can send a `close_shutdown` message to initiate closing:
 
 * `script_pubkey`: the output script for the close transaction.
 
-A node MUST NOT send a `update_add_htlc` after a `close_clearing`, and
-MUST NOT send more than one `close_clearing`.  A node SHOULD send a `close_clearing` (if it has not already) after receiving `close_clearing`.
+A node MUST NOT send a `update_add_htlc` after a `close_shutdown`, and
+MUST NOT send more than one `close_shutdown`.  A node SHOULD send a `close_shutdown` (if it has not already) after receiving `close_shutdown`.
 
-A node MUST fail to route any HTLC added received after it sent `close_clearing`.
+A node MUST fail to route any HTLC added received after it sent `close_shutdown`.
 
-### 4.1.1. `close_clearing` message format
+### 4.1.1. `close_shutdown` message format
 
     // Start clearing out the channel HTLCs so we can close it
-    message close_clearing {
+    message close_shutdown {
 	  // Output script for mutual close tx.
       required bytes script_pubkey = 1;
     }
 
 ## 4.2. Closing negotiation: `close_signature`
 
-Once clearing is complete the final current commitment transactions
+Once shutdown is complete the final current commitment transactions
 will have no HTLCs, and fee negotiation begins.  Each node chooses a
 fee and signs the close transaction the `script_pubkey` fields from
 the `close_celearing` messages and that fee, and sends the signature.
 The process terminates when both agree on a fee, or one side fails the
 connection.
 
-Nodes SHOULD send a `close_signature` message after `close_clearing` has
+Nodes SHOULD send a `close_signature` message after `close_shutdown` has
 been received and no HTLCs remain in either commitment transaction:
 
 * `close_fee`: the fee to offer for the close transaction (in satoshis).

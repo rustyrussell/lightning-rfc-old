@@ -71,7 +71,7 @@ A mutual close transaction *resolves* the funding transaction output.
 
 A node doesn't need to do anything else as it has already agreed to the
 output, which is sent to its specified scriptpubkey (see BOLT #2 "4.1:
-Closing initiation: close_clearing").
+Closing initiation: close_shutdown").
 
 ## Unilateral Close Handling
 
