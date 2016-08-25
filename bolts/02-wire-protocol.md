@@ -553,11 +553,16 @@ to the unacked changeset for its local commitment.
 ## 3.5. Signing HTLCs So Far: `update_commit` and `update_revocation`
 
 When a node has changes for the remote commitment, it can apply them,
-sign the resulting transaction and send an `update_commit` message:
+sign the resulting transaction and send an `update_commit` message.
+In the special case where the remote node can redeem no outputs (there
+are no HTLC outputs, and no output to itself), it does not send a
+signature.
 
 * `sig`: the signature using the private key corresponding to `commit_key` for the receiving node's local commitment transaction (ie. sender's remote commitment transaction).
 
-A sending node MUST apply all remote acked and unacked changes except
+If the commitment transaction has only a single output which pays
+to the other node, `sig` MUST be unset.  Otherwise, a sending node
+MUST apply all remote acked and unacked changes except
 unacked fee changes to the remote commitment before generating `sig`.
 
 A node MUST NOT send an `update_commit` message which does not include any updates.  Note that a node MAY send an `update_commit` message which only alters the fee, and MAY send an `update_commit` message which doesn't change the commitment transaction other than the new revocation hash (due to dust, identical HTLC replacement, or insignificant or multiple fee changes).
