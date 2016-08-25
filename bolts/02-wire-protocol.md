@@ -726,6 +726,18 @@ MUST NOT send more than one `close_shutdown`.  A node SHOULD send a `close_shutd
 
 A node MUST fail to route any HTLC added received after it sent `close_shutdown`.
 
+A node MUST set `script_pubkey` to one of the following forms:
+
+1. `OP_DUP` `OP_HASH160` `20` 20-bytes `OP_EQUALVERIFY` `OP_CHECKSIG`
+   (pay to pubkey hash), OR
+2. `OP_HASH160` `20` 20-bytes `OP_EQUAL` (pay to script hash), OR
+3. `OP_0` `20` 20-bytes (version 0 pay to witness pubkey), OR
+4. `OP_0` `32` 32-bytes (version 0 pay to witness script hash)
+
+A node receiving `close_shutdown` SHOULD fail the connection
+`script_pubkey` is not one of those forms.  This avoids the risk that
+the mutual close transaction will be nonstandard.
+
 ### 4.1.1. `close_shutdown` message format
 
     // Start clearing out the channel HTLCs so we can close it
