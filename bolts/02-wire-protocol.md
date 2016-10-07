@@ -25,7 +25,7 @@ these phases.
 # Table of Contents
 * 1. General Protocol
    * 1.1. pkt message format
-   * 1.2. Persistence and Retransmission
+   * 1.2. Initialization, Persistence and Retransmission
 * 2. Channel Establishment
    * 2.1. The Initial `open_channel` message
    * 2.2. Describing the anchor transaction: `open_anchor`
@@ -71,29 +71,35 @@ here without prior negotiation for its acceptance.
       }
     }
 
-## 1.2. Persistence and Retransmission
+## 1.2. Initialization, Persistence and Retransmission
 
 Because communication transports are unreliable and may need to be
 re-established from time to time, the design of the transport has been
 explicitly separated from the protocol.
 
+A node MUST send an `init` message immediately immediately after it
+has validated the `authenticate` message.  A node MUST set the `ack`
+field in the `init` message to the the sum of previously-processed
+messages of types `open_commit_sig`, `update_commit`,
+`update_revocation`, `close_shutdown` and `close_signature`.
+
+A node SHOULD set the `features` field of the `init` message to a
+bitset representing features it supports.  The receiving node SHOULD
+ignore any odd feature bits it does not support, and MUST fail the
+connection if any unsupported even `features` bit is set.
+
+(For testing new features, we recommend feature bits above 128 to
+avoid conflicts).
+
 A node MUST handle continuing a previous channel on a new encrypted
-transport.  A node reconnecting after receiving or sending an
-`open_channel` message SHOULD send a `reconnect` message on the new
-connection immediately after it has validated the `authenticate`
-message.  A node MAY forget old nodes which have not sent or received
-an `open_commit_sig` message.
+transport.  A node MAY forget old nodes which have not sent or
+received an `open_commit_sig` message.
 
 On disconnection, a node MUST reverse any uncommitted changes sent by
 the other side (ie. `update_add_htlc`, `update_fee`,
 `update_fail_htlc` and `update_fulfill_htlc` for which no
 `update_commit` has been received).  A node SHOULD retain the `r`
 value from the `update_fulfill_htlc`, however.
-
-A node MUST set the `ack` field in the `reconnect` message to the the
-sum of previously-processed messages of types `open_commit_sig`,
-`update_commit`, `update_revocation`, `close_shutdown` and
-`close_signature`.
 
 A node MAY assume that only one of each type of message need be
 retransmitted.  A node SHOULD retransmit the last of each message type
@@ -110,12 +116,14 @@ the corresponding commitment transaction is broadcast by the other
 side at any time.  This is particularly important if a node does not
 simply retransmit the exact same `update_commit` as previously sent.
 
-### 1.2.1. reconnect message format.
+### 1.2.1. init message format.
 
-	// We're reconnecting, here's what we've received already.
-	message reconnect {
+	// Here's what we've received already (if any), and features we support.
+	message init {
 		// open_commit_sig + update_commit + update_revocation + close_shutdown + close_signature received.
 		required uint64 ack = 1;
+		// What features do we support (odd) and require (even)
+		optional bytes features = 2;
 	}
 
 # 2. Channel Establishment
