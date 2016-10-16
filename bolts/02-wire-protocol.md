@@ -538,7 +538,7 @@ Note the unusual check here: the fee rate sent by node A to B will be
 applied at some future point to the A's commitment transaction, but we
 check the fee against B's commitment transaction for validity.  This
 is because B might be adding HTLCs which haven't been received by A,
-which thus doesn't know that the fee rate will be unaffortable.  This check is both simple, and deterministic.
+which thus doesn't know that the fee rate will be unaffordable.  This check is both simple, and deterministic.
 
 The receiving node MAY fail the connection if the `update_fee` is too
 high.
@@ -759,7 +759,7 @@ the mutual close transaction will be nonstandard.
 Once shutdown is complete the final current commitment transactions
 will have no HTLCs, and fee negotiation begins.  Each node chooses a
 fee and signs the close transaction the `script_pubkey` fields from
-the `close_celearing` messages and that fee, and sends the signature.
+the `close_clearing` messages and that fee, and sends the signature.
 The process terminates when both agree on a fee, or one side fails the
 connection.
 
