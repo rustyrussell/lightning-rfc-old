@@ -12,7 +12,7 @@ Rusty Russell, Blockstream <mailto:rusty@rustcorp.com.au>
 
 # Abstract #
 
-Lightning allows for two parties (A and B) to make transactions off-chain, by both holding a cross-signed *commitment tx*, which describes the current state of the channel (basically the current balance). This *commitment tx* is updated everytime a new payment is made, and is spendable at all times.
+Lightning allows for two parties (A and B) to make transactions off-chain, by both holding a cross-signed *commitment tx*, which describes the current state of the channel (basically the current balance). This *commitment tx* is updated every time a new payment is made, and is spendable at all times.
 
 There are three ways a channel can end:
 
@@ -138,7 +138,7 @@ transaction spending the output is mined before the incoming HTLC times out,
 to avoid the risk of one-sided redemption.
 
 Note that in cases where both resolutions are possible (redemption seen after
-timeout, for example), either intepretation is acceptable; it is the
+timeout, for example), either interpretation is acceptable; it is the
 responsibility of the other node to ensure that doesn't occur.
 
 ### On-chain HTLC Handling: Their Offers
