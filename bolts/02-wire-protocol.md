@@ -876,7 +876,7 @@ For each HTLC output offered by the other node:
 2. Otherwise, if this node has no outgoing HTLC using the same the R value, it SHOULD ignore the output.
 
 Note that for a node broadcasting its own commitment transaction,
-there is an additional OP_CHECKSEQUENCEVERIFY delay (correponding to
+there is an additional OP_CHECKSEQUENCEVERIFY delay (corresponding to
 the other node's `open_channel` `delay` field) before it can spend the
 output.
 
