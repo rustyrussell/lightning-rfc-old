@@ -80,7 +80,7 @@ explicitly separated from the protocol.
 A node MUST send an `init` message immediately immediately after it
 has validated the `authenticate` message.  A node MUST set the `ack`
 field in the `init` message to the the sum of previously-processed
-messages of types `open_commit_sig`, `update_commit`,
+messages of types `open`, `open_commit_sig`, `update_commit`,
 `update_revocation`, `close_shutdown` and `close_signature`.
 
 A node SHOULD set the `features` field of the `init` message to a
